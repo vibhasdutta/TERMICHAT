@@ -66,8 +66,6 @@ if __name__ == '__main__':
             elif all (character in choice for character in [Prefix,'settings']):
                     
                     print("Enter the following details:")
-                    IP_Address=input("Enter the IP Address:")
-                    PORT=int(input("Enter the PORT:"))
                     Prefix=input("Enter the Prefix:")
                     UserName=input("Enter the UserName:")
                     with open('config.json','w') as f:
