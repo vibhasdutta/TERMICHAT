@@ -20,6 +20,10 @@ if __name__ == '__main__':
     with open('config.json') as f:
         data = json.load(f)
 
+    with open('config.json','w') as f:
+        data['USER_NAME'] = socket.gethostname()
+        json.dump(data,f)
+
     print("Welcome to the TERMICHAT!")
 
     print("Do you want to Host or Connect the SERVER?[H/C]")
@@ -42,10 +46,7 @@ if __name__ == '__main__':
         
     while True:
         try:
-
-            with open('config.json') as f:
-                    data = json.load(f)
-
+            
             Prefix = data['PREFIX']
             UserName = data['USER_NAME']
             PORT = data['PORT']
