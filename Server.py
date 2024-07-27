@@ -2,7 +2,19 @@ import threading
 import datetime
 import socket
 
-def handle_client(connection,addr,ADDR):
+
+def handle_client(connection,addr,ADDR,SERVER_PASSWORD):
+    
+    # Receive the length of the password
+    password_length = int(connection.recv(4).decode('utf-8'))
+    password = connection.recv(password_length).decode('utf-8')
+
+    if password != SERVER_PASSWORD:
+        connection.send("Invalid password. Disconnecting.".encode('utf-8'))
+        connection.close()
+        return
+    else:
+        connection.send("Password accepted. Welcome to the server.".encode('utf-8'))
 
     username_length = int(connection.recv(4).decode('utf-8'))
     prefix_length = int(connection.recv(4).decode('utf-8'))
@@ -45,16 +57,24 @@ def handle_client(connection,addr,ADDR):
 
 def start(server,ADDR,Ip_Address,PORT):
 
+    while True:
+        SERVER_PASSWORD = input("Enter the server password: ")
+        if len(SERVER_PASSWORD) <= 8:
+            print("Password must be at least 8 characters long.")
+            pass
+        else:
+            break
+        
     x=datetime.datetime.now()
     print(f"[TIME:{x.strftime('%I:%M %p')}][STARTING] Server is starting at {Ip_Address}:{PORT}")
     server.listen()
-    print(f"[LISTENING] Server is listening on {Ip_Address}")
+    print(f"[LISTENING] Server is Online and listening! on {Ip_Address}")
     
     from Interface import client_run
     client_run()
 
     while True:
         connection,addr=server.accept()
-        thread=threading.Thread(target=handle_client,args=(connection,addr,ADDR))
+        thread=threading.Thread(target=handle_client,args=(connection,addr,ADDR,SERVER_PASSWORD))
         thread.start()
-        print(f"[ONlINE CONNECTION] : {threading.active_count()-1}")
+        # print(f"[ONlINE CONNECTION] : {threading.active_count()-1}")

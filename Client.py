@@ -30,13 +30,27 @@ CLIENT_IP = data['SERVER_IP']
 UserName = data['USER_NAME']
 ClientPrefix = data['PREFIX']
 
-
+while True:
+    Server_password=input("Enter the Server Password:")
+    if len(Server_password) <= 8:
+        print("Password must be at least 8 characters long.")
+        pass
+    else:
+        break
 try:
     ADDR=(CLIENT_IP,PORT)
 
     client=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     client.connect(ADDR)
 
+    
+    client.send(f"{len(Server_password):04}".encode('utf-8'))
+    client.send(Server_password.encode('utf-8'))
+    
+    if client.recv(1024).decode('utf-8')=="Invalid password. Disconnecting.":
+        print("Invalid Password!")
+        exit()
+    
     client.send(f"{len(UserName):04}".encode('utf-8'))
     client.send(f"{len(ClientPrefix):04}".encode('utf-8'))
 

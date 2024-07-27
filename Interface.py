@@ -57,7 +57,7 @@ if __name__ == '__main__':
         
     while True:
         try:
-            print(f"\nEnter {Prefix}start_server : to start the Server \n{Prefix}exit : to exit the menu\n")
+            print(f"\nEnter {Prefix}start_server : to start the Server \n {Prefix}start_client : to join server \n{Prefix}exit : to exit the menu\n")
             choice=input("Enter your choice:")
             
             if all (character in choice for character in [Prefix,'start_server']):
@@ -67,10 +67,16 @@ if __name__ == '__main__':
 
                 start(server,ADDR,IP_Address,PORT)
                 time.sleep(2)
-                  
+
+            elif all (character in choice for character in [Prefix,'start_client']):   
+                
+                client_run()    
+                time.sleep(2) 
+            
             elif all (character in choice for character in [Prefix,'exit']):
                 
                 print("Exiting...")
+                exit()
             
             else:
                 
