@@ -32,13 +32,11 @@ if __name__ == '__main__':
     
     with open('config.json') as f:
         data = json.load(f)
-
-    with open('config.json','w') as f:
-        data['USER_NAME'] = socket.gethostname()
-        json.dump(data,f)
+    Prefix = data['PREFIX']
+    PORT = data['PORT']
+    IP_Address = data['SERVER_IP']
 
     print("Welcome to the TERMICHAT!")
-
     print("Do you want to Host or Connect the SERVER?[H/C]")
     while True:
         choice=input("Enter your choice:")
@@ -59,14 +57,7 @@ if __name__ == '__main__':
         
     while True:
         try:
-            
-            Prefix = data['PREFIX']
-            UserName = data['USER_NAME']
-            PORT = data['PORT']
-            IP_Address = data['SERVER_IP']
-
-
-            print(f"\nEnter {Prefix}start_server : to start the Server \n{Prefix}settings : to set prefix and username \n{Prefix}exit : to exit the chat\n")
+            print(f"\nEnter {Prefix}start_server : to start the Server \n{Prefix}exit : to exit the menu\n")
             choice=input("Enter your choice:")
             
             if all (character in choice for character in [Prefix,'start_server']):
@@ -74,20 +65,9 @@ if __name__ == '__main__':
                 server=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
                 server.bind(ADDR)
 
-                start(UserName,Prefix,server,ADDR,IP_Address,PORT)
+                start(server,ADDR,IP_Address,PORT)
                 time.sleep(2)
-            
-            elif all (character in choice for character in [Prefix,'settings']):
-                    
-                    print("Enter the following details:")
-                    Prefix=input("Enter the Prefix:")
-                    UserName=input("Enter the UserName:")
-                    with open('config.json','w') as f:
-                        data['PREFIX'] = Prefix
-                        data['USER_NAME'] = UserName
-                        json.dump(data,f)
-                    print("Settings Updated!")
-                    
+                  
             elif all (character in choice for character in [Prefix,'exit']):
                 
                 print("Exiting...")
