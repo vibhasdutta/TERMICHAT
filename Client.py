@@ -74,7 +74,7 @@ while True:
             print(f"{ClientPrefix}online : To check the number of online connections\n{ClientPrefix}exit : To exit the chat")
         
         elif all (character in message for character in [ClientPrefix,'exit']):
-            break
+            send(f"{ClientPrefix}exit")
         
         else:
             send(message)
