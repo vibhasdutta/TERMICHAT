@@ -3,16 +3,29 @@ import subprocess
 from Server import start
 import socket
 import json
-
+import platform
+from pathlib import Path
 
 def client_run():
-    from pathlib import Path
-        # Get the base directory of the script
+    # Get the base directory of the script
     base_dir = Path(__file__).resolve().parent
-
     # Define the TERMICHAT directory
     termichat_dir = base_dir / 'Client.py'
-    subprocess.Popen(['start', 'cmd', '/k', 'python',termichat_dir], shell=True)
+    
+    # Determine the operating system
+    os_name = platform.system()
+
+    if os_name == "Windows":
+        subprocess.Popen(['start', 'cmd.exe', '/k', 'python', str(termichat_dir)], shell=True)
+    elif os_name == "Darwin":  # macOS
+        subprocess.Popen(['osascript', '-e', f'tell application "Terminal" to do script "python {termichat_dir}"'])
+    elif os_name == "Linux":
+        try:
+            subprocess.Popen(['x-terminal-emulator', '-e', 'python', str(termichat_dir)])
+        except FileNotFoundError:
+            subprocess.Popen(['gnome-terminal', '--', 'python', str(termichat_dir)])
+    else:
+        raise OSError("Unsupported operating system")
 
 
 if __name__ == '__main__':
