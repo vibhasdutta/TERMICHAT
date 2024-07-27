@@ -1,8 +1,4 @@
-import socket
 import threading
-import os
-import dotenv
-dotenv.load_dotenv()
 import datetime
 
 def handle_client(connection,addr,UserName,Prefix,ADDR):
@@ -29,11 +25,11 @@ def handle_client(connection,addr,UserName,Prefix,ADDR):
             break
     connection.close()
 
-def start(UserName,Prefix,server,ADDR):
+def start(UserName,Prefix,server,ADDR,Ip_Address,PORT):
     x=datetime.datetime.now()
-    print(f"[TIME:{x.strftime('%I:%M %p')}][STARTING] Server is starting at {os.getenv('SERVER_IP')}:{os.getenv('PORT')}")
+    print(f"[TIME:{x.strftime('%I:%M %p')}][STARTING] Server is starting at {Ip_Address}:{PORT}")
     server.listen()
-    print(f"[LISTENING] Server is listening on {os.getenv('SERVER_IP')}")
+    print(f"[LISTENING] Server is listening on {Ip_Address}")
     
     from Interface import client_run
     client_run()
@@ -43,6 +39,3 @@ def start(UserName,Prefix,server,ADDR):
         thread=threading.Thread(target=handle_client,args=(connection,addr,UserName,Prefix,ADDR))
         thread.start()
         print(f"[ONlINE CONNECTION] : {threading.active_count()-1}")
-
-
-
