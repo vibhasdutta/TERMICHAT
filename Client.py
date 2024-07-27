@@ -1,9 +1,5 @@
 import socket
-import threading
-import os
-import dotenv
-import time
-dotenv.load_dotenv()
+import json
 
 def send(msg):
     message=msg.encode('utf-8')
@@ -14,23 +10,19 @@ def send(msg):
     client.send(message)
     print(client.recv(2048).decode('utf-8'))
 
+with open('config.json') as f:
+    data = json.load(f)
 
-UserName = os.getenv('USER_NAME')
-Prefix = os.getenv('Prefix')
-PORT = int(os.getenv('PORT'))
-
-if os.getenv('HOSTING_ON')=='True':
-    CLIENT_IP = socket.gethostbyname(socket.gethostname())
-else:
-    CLIENT_IP = os.getenv('SERVER_IP')
-    
+Prefix = data['PREFIX']
+PORT = data['PORT']
+CLIENT_IP = socket.gethostbyname(socket.gethostname())
 ADDR=(CLIENT_IP,PORT)
 client=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
 try:
     client.connect(ADDR)
-except OSError:
-    print("THE SEVRER IP OR PORT IS INVALID!")
+except socket.error as e:
+    print(f"THE SEVRER IP OR PORT IS INVALID! or {e}")
     exit()
 
 while True:
