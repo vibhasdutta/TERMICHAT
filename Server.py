@@ -164,8 +164,7 @@ def handle_client(connection,addr,ADDR,SERVER_PASSWORD,ADMIN_PASSWORD,UserName,C
     except Exception as e:
         print(f"[ERROR] : {e}")
         return 
-
-    print(Admin)   
+    print(f"[{x.strftime('%I:%M %p')}][{UserName}:{addr}] Connected to the Server[{ADDR}]!")
     broadcast(f"[{x.strftime('%I:%M %p')}][{UserName}:{addr}] Connected to the Server[{ADDR}]!")
 
     connected=True

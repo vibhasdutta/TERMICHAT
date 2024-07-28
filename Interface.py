@@ -39,7 +39,7 @@ def client_run():
         else:
             raise OSError(f"Unsupported operating system: {os_name}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"An erroroccurred:{e}")
 
 
 if __name__ == '__main__':

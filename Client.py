@@ -92,8 +92,7 @@ try:
     AdminVerify = client.recv(AdminVerify).decode('utf-8')
 
     if AdminVerify == 'admin?':
-        print("You are an Admin![Yes/No]:")
-        check = input()
+        check = input("You are an Admin![Yes/No]:")
         client.send(f"{len(check):04}".encode('utf-8'))
         client.send(check.encode('utf-8'))
         if check.lower() == 'yes':
