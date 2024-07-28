@@ -84,9 +84,6 @@ def start(server,ADDR,Ip_Address,PORT):
     server.listen()
     print(f"[LISTENING] Server is Online and listening! on {Ip_Address}")
     
-    from Interface import client_run
-    client_run()
-
     while True:
         connection,addr=server.accept()
 
