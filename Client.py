@@ -1,8 +1,6 @@
 import socket
 import json
 import threading
-import time
-
 
 try:    
 
@@ -14,10 +12,10 @@ try:
     UserName = data['USER_NAME']
     ClientPrefix = data['PREFIX']
 
-    print(f"SERVER_IP : {CLIENT_IP}\nPORT : {PORT}\nUSER_NAME : {UserName}\nPREFIX : {ClientPrefix}")
+    print(f"---CURRENTSETTINGS---\nSERVER_IP : {CLIENT_IP}\nPORT : {PORT}\nUSER_NAME : {UserName}\nPREFIX : {ClientPrefix}")
     
-    check = input("Do you want to change the Settings?[Y/N]:")
-    if check.lower()=='y':
+    check = input("Do you want to change the Settings?[Yes/No]:")
+    if check.lower()=='yes':
         check=input("what do you want to change?[USERNAME/PREFIX]:")
         
         if check.lower()=='username':
@@ -39,14 +37,6 @@ try:
             data['PORT'] = data.get('PORT', 8080)
             json.dump(data,f)
 
-    while True:
-        Server_password=input("Enter the Server Password:")
-        if len(Server_password) <= 8:
-            print("Password must be at least 8 characters long.")
-            pass
-        else:
-            break
-
 
     ADDR=(CLIENT_IP,PORT)
     client=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
@@ -55,16 +45,90 @@ try:
     client.send(UserName.encode('utf-8'))
     client.send(f"{len(ClientPrefix):04}".encode('utf-8'))
     client.send(ClientPrefix.encode('utf-8'))
+
+    BanVerify = int(client.recv(4).decode('utf-8')) 
+    BanVerify = client.recv(BanVerify).decode('utf-8')
+    if BanVerify == 'you are banned':
+        print(f"You are banned! frome the server {ADDR}")
+        exit()
     
-    client.send(f"{len(Server_password):04}".encode('utf-8'))
-    client.send(Server_password.encode('utf-8'))
-    text = int(client.recv(4).decode('utf-8'))
-    text = client.recv(text).decode('utf-8')
-    if text == 'access denied':
-        print("Access Denied!")
-        exit()  
-    else:
-        print("Access Granted!")
+
+    Server_PASS_Try = 0
+    while True:
+        if Server_PASS_Try == 3:
+            UserVerify = 'Too many attempts!'
+            client.send(f"{len(UserVerify):04}".encode('utf-8'))
+            client.send(UserVerify.encode('utf-8'))
+            print("Too many attempts! Exiting...")
+            exit()
+
+        while True:
+            Server_password=input("Enter the Server Password:")
+            if len(Server_password) <= 8:
+                print("Password must be at least 8 characters long.")
+                pass
+            else:
+                break
+        
+        client.send(f"{len(Server_password):04}".encode('utf-8'))
+        client.send(Server_password.encode('utf-8'))
+
+        UserVerify = int(client.recv(4).decode('utf-8'))
+        UserVerify = client.recv(UserVerify).decode('utf-8')
+
+        if UserVerify == 'you are banned':
+            print(f"You are banned! frome the server {ADDR}")
+            exit()
+        elif UserVerify == 'access denied':
+            print("Access Denied!")
+            Server_PASS_Try += 1 
+            pass
+        else:
+            print("Access Granted!")
+            break
+
+
+    AdminVerify = int(client.recv(4).decode('utf-8'))
+    AdminVerify = client.recv(AdminVerify).decode('utf-8')
+
+    if AdminVerify == 'admin?':
+        print("You are an Admin![Yes/No]:")
+        check = input()
+        client.send(f"{len(check):04}".encode('utf-8'))
+        client.send(check.encode('utf-8'))
+        if check.lower() == 'yes':
+            
+            Admin_PASS_Try = 0
+            while True:
+
+                if Admin_PASS_Try == 3:
+                    AdminVerfiy = 'Too many attempts!'
+                    client.send(f"{len(AdminVerify):04}".encode('utf-8'))
+                    client.send(AdminVerify.encode('utf-8'))
+                    print("Too many attempts! Exiting...")
+                    exit()
+
+                while True:
+                    AdminVerify = input("Enter the Admin Password:")
+                    if len(AdminVerify) <= 8:
+                        print("Password must be at least 8 characters long.")
+                        pass
+                    else:
+                        break
+                    
+                client.send(f"{len(AdminVerify):04}".encode('utf-8'))
+                client.send(AdminVerify.encode('utf-8'))
+
+                AdminVerify = int(client.recv(4).decode('utf-8'))
+                AdminVerify = client.recv(AdminVerify).decode('utf-8')
+                
+                if AdminVerify == 'access denied':
+                    Admin_PASS_Try += 1
+                    print("Access Denied!")
+                else:
+                    break
+                    
+        
 except KeyboardInterrupt:
     print("Keyboard Interrupt!")
     exit()        
@@ -96,31 +160,67 @@ def receive():
 def main():
     while True:
         try:
-
-                message=input()
+                try:
+                    message=input()
+                except EOFError:
+                    print("EXITING...")
+                    break
             
                 if all (character in message for character in [ClientPrefix,'help']):
-                    print(f"{ClientPrefix}online : To check the number of online connections\n{ClientPrefix}exit : To exit the chat")
-            
+                    print(f"{ClientPrefix}online : To check the number of online Members\n{ClientPrefix}ban : To Ban a Member(ADMIN ONLY)\n{ClientPrefix}unban : To UnBan a Member(ADMIN ONLY)\n{ClientPrefix}banlist : To check list of Ban a Members(ADMIN ONLY)\n{ClientPrefix}kick : To Kick a Member(ADMIN ONLY)\n{ClientPrefix}exit : To exit the chat")
+
                 elif all (character in message for character in [ClientPrefix,'exit']):
                     send(f"{ClientPrefix}exit")
                     break
-            
+                elif all (character in message for character in [ClientPrefix,'banlist']):
+                    send(f"{ClientPrefix}banlist")
+
+                elif all (character in message for character in [ClientPrefix,'unban']):
+                    send(f"{ClientPrefix}unban")
+                    try:
+                        index = (input())
+                        client.send(f"{len(index):04}".encode('utf-8'))
+                        client.send(index.encode('utf-8'))
+                    except ValueError:
+                        print("Invalid Input!")
+                    except KeyboardInterrupt:
+                        print("Keyboard Interrupt!")
+                    
+                elif all (character in message for character in [ClientPrefix,'kick']):
+                    send(f"{ClientPrefix}kick")
+                    try:
+                        index = (input())
+                        client.send(f"{len(index):04}".encode('utf-8'))
+                        client.send(index.encode('utf-8'))
+                    except ValueError:
+                        print("Invalid Input!")
+                    except KeyboardInterrupt:
+                        print("Keyboard Interrupt!")
+
+                elif all (character in message for character in [ClientPrefix,'ban']) and not all (character in message for character in [ClientPrefix,'unban']):
+                    send(f"{ClientPrefix}ban")
+                    try:
+                        index = (input())
+                        client.send(f"{len(index):04}".encode('utf-8'))
+                        client.send(index.encode('utf-8'))
+                    except ValueError:
+                        print("Invalid Input!")
+                    except KeyboardInterrupt:
+                        print("Keyboard Interrupt!")
+                    
                 else:
                     send(message)
-        except KeyboardInterrupt:
-            print("Keyboard Interrupt!")
-            break            
-        
+
         except ConnectionResetError:
             print(f"Connection was closed by the Server[{ADDR}]!")
             break
         except ConnectionAbortedError:
             print(f"Connection was closed by the Server[{ADDR}]!")
             break
-
-thread1 = threading.Thread(target=receive)
-thread1.start()
-thread2 = threading.Thread(target=main)
-thread2.start()
-
+try:
+    thread1 = threading.Thread(target=receive)
+    thread1.start()
+    thread2 = threading.Thread(target=main)
+    thread2.start()
+except Exception as e:
+    exit()
