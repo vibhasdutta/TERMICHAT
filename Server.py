@@ -2,27 +2,36 @@ import threading
 import datetime
 import socket
 
+Clients = []
+def broadcast(message):
+    for client in Clients:
+        client.send(f"{message}".encode('utf-8'))
 
-def handle_client(connection,addr,ADDR,SERVER_PASSWORD):
-    
-    # Receive the length of the password
-    password_length = int(connection.recv(4).decode('utf-8'))
-    password = connection.recv(password_length).decode('utf-8')
+def handle_client(connection,addr,ADDR,SERVER_PASSWORD,UserName,ClientPrefix):
 
-    if password != SERVER_PASSWORD:
-        connection.send("Invalid password. Disconnecting.".encode('utf-8'))
-        connection.close()
-        return
-    else:
-        connection.send("Password accepted. Welcome to the server.".encode('utf-8'))
+    try:
+        # Receive the length of the password
+        password_length = int(connection.recv(4).decode('utf-8'))
+        password = connection.recv(password_length).decode('utf-8')
+        
+        if password != SERVER_PASSWORD:
+            Invatext = "access denied"
+            connection.send(f"{len(Invatext):04}".encode('utf-8'))
+            connection.send(Invatext.encode('utf-8'))
+            connection.close()
+            return
+        else:
+            acctext = "access granted"
+            connection.send(f"{len(acctext):04}".encode('utf-8'))
+            connection.send(acctext.encode('utf-8'))
 
-    username_length = int(connection.recv(4).decode('utf-8'))
-    prefix_length = int(connection.recv(4).decode('utf-8'))
+        
 
-    UserName = connection.recv(username_length).decode('utf-8')
-    ClientPrefix = connection.recv(prefix_length).decode('utf-8')
+    except Exception as e:
+        print(f"[ERROR] : {e}")
+        return 
 
-    print(f"[{UserName}:{addr}] Connected to the Server[{ADDR}]!")
+    broadcast(f"[{UserName}:{addr}] Connected to the Server[{ADDR}]!")
     connected=True
     while connected:
         try:
@@ -33,26 +42,31 @@ def handle_client(connection,addr,ADDR,SERVER_PASSWORD):
                     message_length = int(message_length)
                 except ValueError:
                     print(f"Invalid message length received: {message_length}")
-                    continue
+                    break
                 
                 message=connection.recv(message_length).decode('utf-8')
                 
                 if all (character in message for character in [ClientPrefix,'exit']):
                     connected=False
                     print(f"[{UserName}:{addr} ] Disconnected from the Server[{ADDR}]!")
+                    broadcast(f"[{UserName}:{addr} ] Disconnected from the Server[{ADDR}]!")
+                    
                     
                 elif all (character in message for character in [ClientPrefix,'online']):
-                    print(f"[ONlINE CONNECTION] : {threading.active_count()-1}")
+                    connection.send(f"[ONlINE CONNECTION] : {threading.active_count()-1}".encode('utf-8'))
                 
                 else:
                     print(f"[{UserName}] : {message}")
+                    broadcast(f"[{UserName}] : {message}")
                 
-                connection.send(f"Sent:{message}".encode('utf-8')) # USER CAN SEE THE MESSAGE SENT BY HIM/HER
+                #connection.send(f"Sent:{message}".encode('utf-8')) # USER CAN SEE THE MESSAGE SENT BY HIM/HER
         
         except Exception as e:
-            print(f"[{UserName}:{addr}] Disconnected from the Server[{ADDR}]!")
+            print(f"[{UserName}:{addr} ] Disconnected from the Server[{ADDR}]!")
             #print(f"[ERROR] : {e}")
             break
+
+    Clients.remove(connection)
     connection.close()
 
 def start(server,ADDR,Ip_Address,PORT):
@@ -75,6 +89,15 @@ def start(server,ADDR,Ip_Address,PORT):
 
     while True:
         connection,addr=server.accept()
-        thread=threading.Thread(target=handle_client,args=(connection,addr,ADDR,SERVER_PASSWORD))
+
+        username_length = int(connection.recv(4).decode('utf-8'))
+        UserName = connection.recv(username_length).decode('utf-8')
+
+        prefix_length = int(connection.recv(4).decode('utf-8'))
+        ClientPrefix = connection.recv(prefix_length).decode('utf-8')
+
+        Clients.append(connection)
+
+        thread=threading.Thread(target=handle_client,args=(connection,addr,ADDR,SERVER_PASSWORD,UserName,ClientPrefix))
         thread.start()
         # print(f"[ONlINE CONNECTION] : {threading.active_count()-1}")

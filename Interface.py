@@ -5,6 +5,15 @@ import socket
 import json
 import platform
 from pathlib import Path
+import re
+
+def is_valid_ip(ip):
+    pattern = re.compile(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")
+    if pattern.match(ip):
+        return all(0 <= int(num) <= 255 for num in ip.split('.'))
+    return False
+
+
 
 def client_run():
     # Get the base directory of the script
@@ -32,28 +41,61 @@ if __name__ == '__main__':
     
     with open('config.json') as f:
         data = json.load(f)
+
     Prefix = data['PREFIX']
     PORT = data['PORT']
     IP_Address = data['SERVER_IP']
 
-    print("Welcome to the TERMICHAT!")
-    print("Do you want to Host or Connect the SERVER?[H/C]")
+    print("Welcome to the TERMICHAT!") 
+
     while True:
+        print("Do you want to Host or Connect the SERVER?[H/C]")
         choice=input("Enter your choice:")
+        
         if choice.lower()=='h':
-            with open('config.json','w') as f:
-                data['SERVER_IP'] = socket.gethostbyname(socket.gethostname())
-                data['PORT'] = int(input("Enter the Server PORT:"))
-                json.dump(data,f)
+            
+            IP_Address = socket.gethostbyname(socket.gethostname())
+            while True:
+                try:
+                    port_number = int(input("Enter the Server PORT:"))
+                    if 1 <= port_number <= 65535:
+                        with open('config.json','w') as f:
+                            data['PORT'] = port_number
+                            json.dump(data,f)
+                        break
+                    else:
+                        print("Invalid port. Please enter a number between 1 and 65535.")
+                except ValueError:
+                    print("Invalid port. Please enter a valid number.")
             break;
+        
         elif choice.lower()=='c':
-            with open('config.json','w') as f:
-                data['SERVER_IP'] = input("Enter the Server IP:")
-                data['PORT'] = int(input("Enter the Server PORT:"))
-                json.dump(data,f)
+            while True:
+                try:
+                    ip_address = input("Enter the Server IP:")
+                    if is_valid_ip(ip_address):
+                        with open('config.json','w') as f:
+                            data['IP'] = ip_address
+                            json.dump(data,f)
+                        break
+                    else:
+                        print("Invalid IP address. Please enter a valid IP address.")
+                except ValueError:
+                    print("Invalid IP address. Please enter a valid IP address.")
+
+            while True:
+                try:
+                    port_number = int(input("Enter the Server PORT:"))
+                    if 1 <= port_number <= 65535:
+                        with open('config.json','w') as f:
+                            data['PORT'] = port_number
+                            json.dump(data,f)
+                        break
+                    else:
+                        print("Invalid port. Please enter a number between 1 and 65535.")
+                except ValueError:
+                    print("Invalid port. Please enter a valid number.")
             break;
-        else:
-            print("Invalid Choice!")
         
     while True:
         try:
