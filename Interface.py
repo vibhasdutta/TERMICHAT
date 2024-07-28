@@ -1,11 +1,12 @@
 import time
-import subprocess
+import re
 from Server import start
 import socket
 import json
+import subprocess
 import platform
 from pathlib import Path
-import re
+
 
 def is_valid_ip(ip):
     pattern = re.compile(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")
@@ -17,23 +18,28 @@ def is_valid_ip(ip):
 def client_run():
     # Get the base directory of the script
     base_dir = Path(__file__).resolve().parent
-    # Define the TERMICHAT directory
-    termichat_dir = base_dir / 'Client.py'
+    # Define the Client.py path
+    clientpy_path = base_dir / 'Client.py'
     
     # Determine the operating system
     os_name = platform.system()
 
-    if os_name == "Windows":
-        subprocess.Popen(['start', 'cmd.exe', '/k', 'python', str(termichat_dir)], shell=True)
-    elif os_name == "Darwin":  # macOS
-        subprocess.Popen(['osascript', '-e', f'tell application "Terminal" to do script "python {termichat_dir}"'])
-    elif os_name == "Linux":
-        try:
-            subprocess.Popen(['x-terminal-emulator', '-e', 'python', str(termichat_dir)])
-        except FileNotFoundError:
-            subprocess.Popen(['gnome-terminal', '--', 'python', str(termichat_dir)])
-    else:
-        raise OSError("Unsupported operating system")
+    try:
+        if os_name == "Windows":
+            subprocess.Popen(['start', 'cmd.exe', '/k', 'python', str(clientpy_path)], shell=True)
+        elif os_name == 'Darwin':  # macOS
+            script = f"""
+            tell application "Terminal"
+                do script "cd {base_dir} && python3 {clientpy_path}"
+            end tell
+            """
+            subprocess.Popen(['osascript', '-e', script])
+        elif os_name == 'Linux':  # Linux (including Linux Mint)
+            subprocess.Popen(['gnome-terminal', '--', 'bash', '-c', f'python3 {clientpy_path}'])
+        else:
+            raise OSError(f"Unsupported operating system: {os_name}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 
 if __name__ == '__main__':
@@ -46,7 +52,7 @@ if __name__ == '__main__':
     IP_Address = data['SERVER_IP']
 
 
-    print("---WELCOME TO TERMICHAT!---") 
+    print("---🍁 WELCOME TO TERMICHAT 🍁---") 
 
     try:
 

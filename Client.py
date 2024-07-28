@@ -167,7 +167,7 @@ def main():
                     break
             
                 if all (character in message for character in [ClientPrefix,'help']):
-                    print(f"{ClientPrefix}online : To check the number of online Members\n{ClientPrefix}ban : To Ban a Member(ADMIN ONLY)\n{ClientPrefix}unban : To UnBan a Member(ADMIN ONLY)\n{ClientPrefix}banlist : To check list of Ban a Members(ADMIN ONLY)\n{ClientPrefix}kick : To Kick a Member(ADMIN ONLY)\n{ClientPrefix}exit : To exit the chat")
+                    print(f"{ClientPrefix}online : To check the number of online Members\n{ClientPrefix}adminlist : To Show all Admin Online!\n{ClientPrefix}ban : To Ban a Member(ADMIN ONLY)\n{ClientPrefix}unban : To UnBan a Member(ADMIN ONLY)\n{ClientPrefix}banlist : To check list of Ban a Members(ADMIN ONLY)\n{ClientPrefix}kick : To Kick a Member(ADMIN ONLY)\n{ClientPrefix}exit : To exit the chat")
 
                 elif all (character in message for character in [ClientPrefix,'exit']):
                     send(f"{ClientPrefix}exit")
