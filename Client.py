@@ -14,6 +14,8 @@ try:
     UserName = data['USER_NAME']
     ClientPrefix = data['PREFIX']
 
+    print(f"SERVER_IP : {CLIENT_IP}\nPORT : {PORT}\nUSER_NAME : {UserName}\nPREFIX : {ClientPrefix}")
+    
     check = input("Do you want to change the Settings?[Y/N]:")
     if check.lower()=='y':
         check=input("what do you want to change?[USERNAME/PREFIX]:")
@@ -33,7 +35,7 @@ try:
     else:
         with open('config.json','w') as f:
             data['USER_NAME'] = data.get('USER_NAME', socket.gethostname())
-            data['PREFIX'] = data.get('PREFIX', 'default_prefix')
+            data['PREFIX'] = data.get('PREFIX', '!')
             data['PORT'] = data.get('PORT', 8080)
             json.dump(data,f)
 
@@ -121,5 +123,4 @@ thread1 = threading.Thread(target=receive)
 thread1.start()
 thread2 = threading.Thread(target=main)
 thread2.start()
-
 
