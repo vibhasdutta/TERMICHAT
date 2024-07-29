@@ -39,7 +39,7 @@ def client_run():
         else:
             raise OSError(f"Unsupported operating system: {os_name}")
     except Exception as e:
-        print(f"An erroroccurred:{e}")
+        print(f"⚠️ An error occurred:{e}")
 
 
 if __name__ == '__main__':
@@ -51,86 +51,80 @@ if __name__ == '__main__':
     PORT = data['PORT']
     IP_Address = data['SERVER_IP']
 
-
-    print("---🍁 WELCOME TO TERMICHAT 🍁---") 
+    print("\n---🍁 WELCOME TO TERMICHAT 🍁 ---\n") 
 
     try:
-
         while True:
-            print(f"{Prefix}start_server : to start the Server\n{Prefix}start_client : to join server\n{Prefix}exit : to exit the menu\n")
-            choice=input("Enter your choice:")
+            print(f"{Prefix}start_server : 🌐 to start the Server\n{Prefix}start_client : 🖥️  to join server\n{Prefix}exit : 🚪 to exit the menu\n")
+            choice = input("Enter your choice: ")
             
-            if all (character in choice for character in [Prefix,'start_server']):
+            if all (character in choice for character in [Prefix, 'start_server']):
                 while True:
                     try:
-                        IP_Address = input("Enter the Server IP:")
+                        IP_Address = input("🌐 Enter the Server IP: ")
                         if is_valid_ip(IP_Address):
-                            with open('config.json','w') as f:
+                            with open('config.json', 'w') as f:
                                 data['SERVER_IP'] = IP_Address
-                                json.dump(data,f)
+                                json.dump(data, f)
                             break
                         else:
-                            print("Invalid IP address. Please enter a valid IP address.")
+                            print("❌ Invalid IP address. Please enter a valid IP address.")
                     except ValueError:
-                        print("Invalid IP address. Please enter a valid IP address.")
+                        print("❌ Invalid IP address. Please enter a valid IP address.")
                 while True:
                     try:
-                        PORT = int(input("Enter the Server PORT:"))
+                        PORT = int(input("🔌 Enter the Server PORT: "))
                         if 1 <= PORT <= 65535:
-                            with open('config.json','w') as f:
+                            with open('config.json', 'w') as f:
                                 data['PORT'] = PORT
-                                json.dump(data,f)
+                                json.dump(data, f)
                             break
                         else:
-                            print("Invalid port. Please enter a number between 1 and 65535.")
+                            print("❌ Invalid port. Please enter a number between 1 and 65535.")
                     except ValueError:
-                        print("Invalid port. Please enter a valid number.")
+                        print("❌ Invalid port. Please enter a valid number.")
 
-                ADDR=(IP_Address,PORT)
-                server=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+                ADDR = (IP_Address, PORT)
+                server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 server.bind(ADDR)
-                start(server,ADDR,IP_Address,PORT)
+                start(server, ADDR, IP_Address, PORT)
                 time.sleep(2)
                 break;
             
-            elif all (character in choice for character in [Prefix,'start_client']):
+            elif all (character in choice for character in [Prefix, 'start_client']):
                 while True:
                     try:
-                        IP_Address = input("Enter the Server IP:")
+                        IP_Address = input("🌐 Enter the Server IP: ")
                         if is_valid_ip(IP_Address):
-                            with open('config.json','w') as f:
+                            with open('config.json', 'w') as f:
                                 data['SERVER_IP'] = IP_Address
-                                json.dump(data,f)
+                                json.dump(data, f)
                             break
                         else:
-                            print("Invalid IP address. Please enter a valid IP address.")
+                            print("❌ Invalid IP address. Please enter a valid IP address.")
                     except ValueError:
-                        print("Invalid IP address. Please enter a valid IP address.")
+                        print("❌ Invalid IP address. Please enter a valid IP address.")
 
                 while True:
                     try:
-                        PORT = int(input("Enter the Server PORT:"))
+                        PORT = int(input("🔌 Enter the Server PORT: "))
                         if 1 <= PORT <= 65535:
-                            with open('config.json','w') as f:
+                            with open('config.json', 'w') as f:
                                 data['PORT'] = PORT
-                                json.dump(data,f)
+                                json.dump(data, f)
                             break
                         else:
-                            print("Invalid port. Please enter a number between 1 and 65535.")
+                            print("❌ Invalid port. Please enter a number between 1 and 65535.")
                     except ValueError:
-                        print("Invalid port. Please enter a valid number.")
+                        print("❌ Invalid port. Please enter a valid number.")
                 client_run()    
                 time.sleep(2)
                 break;
-            elif all (character in choice for character in [Prefix,'exit']):
-                    
-                    print("Exiting...")
-                    exit()
-                
+            elif all (character in choice for character in [Prefix, 'exit']):
+                print("👋 Exiting...")
+                exit()
             else:
-                
-                print("Invalid Input!")
+                print("⚠️ Invalid Input!")
         
     except KeyboardInterrupt:
-        print("Exiting...")
- 
+        print("👋 Exiting...")
