@@ -106,6 +106,7 @@ def handle_client(connection,addr,ADDR,SERVER_PASSWORD,ADMIN_PASSWORD,UserName,C
             connection.send(BanText.encode('utf-8'))
 
         while True:
+            
             password_length = int(connection.recv(4).decode('utf-8'))
             password = connection.recv(password_length).decode('utf-8')
             
@@ -115,16 +116,12 @@ def handle_client(connection,addr,ADDR,SERVER_PASSWORD,ADMIN_PASSWORD,UserName,C
                 connection.send(f"{len(Invatext):04}".encode('utf-8'))
                 connection.send(Invatext.encode('utf-8'))
                 print(f"[{x.strftime('%I:%M %p')}][{UserName}:{addr}] was trying to connect to the server[{ADDR}] but access denied!")
-                UserNames.remove(f"{UserName}:{addr}")
-                Clients.remove(connection)
-                connection.close()
-                return
+
             elif password == 'Too many attempts!':
                 UserNames.remove(f"{UserName}:{addr}")
                 print(f"[{x.strftime('%I:%M %p')}][{UserName}:{addr}] was trying to connect to the server[{ADDR}] but too many attempts!")
                 Clients.remove(connection)
                 connection.close()
-                return
             else:
                 acctext = "access granted"
                 connection.send(f"{len(acctext):04}".encode('utf-8'))
@@ -194,6 +191,7 @@ def handle_client(connection,addr,ADDR,SERVER_PASSWORD,ADMIN_PASSWORD,UserName,C
                     
                     elif all (character in message for character in [ClientPrefix,'exit']):
                         connected=False
+                        connection.send(f"{ClientPrefix}Exit".encode('utf-8'))
                         print(f"[{x.strftime('%I:%M %p')}][{UserName}:{addr}] Disconnected from the Server[{ADDR}]!")
                         broadcast(f"[{x.strftime('%I:%M %p')}][{UserName}:{addr}] Disconnected from the Server[{ADDR}]!")
 
@@ -225,7 +223,6 @@ def start(server,ADDR,Ip_Address,PORT):
         SERVER_PASSWORD = input("Enter the server password: ")
         if len(SERVER_PASSWORD) <= 8:
             print("Password must be at least 8 characters long.")
-            pass
         else:
             break
 
@@ -233,7 +230,6 @@ def start(server,ADDR,Ip_Address,PORT):
         ADMIN_PASSWORD = input("Enter the admin password: ")
         if len(ADMIN_PASSWORD) <= 8:
             print("Password must be at least 8 characters long.")
-            pass
         else:
             break
         

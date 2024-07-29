@@ -61,9 +61,18 @@ if __name__ == '__main__':
             choice=input("Enter your choice:")
             
             if all (character in choice for character in [Prefix,'start_server']):
-                with open('config.json','w') as f:
-                    data['SERVER_IP'] = socket.gethostbyname(socket.gethostname())
-                    json.dump(data,f)
+                while True:
+                    try:
+                        IP_Address = input("Enter the Server IP:")
+                        if is_valid_ip(IP_Address):
+                            with open('config.json','w') as f:
+                                data['SERVER_IP'] = IP_Address
+                                json.dump(data,f)
+                            break
+                        else:
+                            print("Invalid IP address. Please enter a valid IP address.")
+                    except ValueError:
+                        print("Invalid IP address. Please enter a valid IP address.")
                 while True:
                     try:
                         PORT = int(input("Enter the Server PORT:"))

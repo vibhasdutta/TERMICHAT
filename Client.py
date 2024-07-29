@@ -66,7 +66,6 @@ try:
             Server_password=input("Enter the Server Password:")
             if len(Server_password) <= 8:
                 print("Password must be at least 8 characters long.")
-                pass
             else:
                 break
         
@@ -76,13 +75,10 @@ try:
         UserVerify = int(client.recv(4).decode('utf-8'))
         UserVerify = client.recv(UserVerify).decode('utf-8')
 
-        if UserVerify == 'you are banned':
-            print(f"You are banned! frome the server {ADDR}")
-            exit()
-        elif UserVerify == 'access denied':
+        if UserVerify == 'access denied':
             print("Access Denied!")
             Server_PASS_Try += 1 
-            pass
+            continue
         else:
             print("Access Granted!")
             break
@@ -111,7 +107,6 @@ try:
                     AdminVerify = input("Enter the Admin Password:")
                     if len(AdminVerify) <= 8:
                         print("Password must be at least 8 characters long.")
-                        pass
                     else:
                         break
                     
@@ -126,7 +121,8 @@ try:
                     print("Access Denied!")
                 else:
                     break
-                    
+        else:
+            pass            
         
 except KeyboardInterrupt:
     print("Keyboard Interrupt!")
@@ -150,7 +146,13 @@ def send(msg):
 def receive():
     try:
         while True:
-            print(client.recv(2048).decode('utf-8'))  
+            message = client.recv(2048).decode('utf-8')
+            if message == f"{ClientPrefix}Exit":
+                print("You are disconnected from the server!")
+                break
+            else:
+                print(message)
+
     except Exception as e:
         print(f"ERROR : {e}")
 
