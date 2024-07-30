@@ -88,42 +88,45 @@ try:
     AdminVerify = client.recv(AdminVerify).decode('utf-8')
 
     if AdminVerify == 'admin?':
-        check = input("👑 You are an Admin! [Yes/No]: ")
-        client.send(f"{len(check):04}".encode('utf-8'))
-        client.send(check.encode('utf-8'))
-        
-        if check.lower() == 'yes':
+        while True:
+            check = input("👑 Are you an Admin! [Yes/No]: ")
+            client.send(f"{len(check):04}".encode('utf-8'))
+            client.send(check.encode('utf-8'))
             
-            Admin_PASS_Try = 0
-            while True:
+            if check.lower() == 'yes':
+                
+                Admin_PASS_Try = 0
+                while True:
 
-                if Admin_PASS_Try == 3:
-                    AdminVerfiy = 'Too many attempts!'
+                    if Admin_PASS_Try == 3:
+                        AdminVerfiy = 'Too many attempts!'
+                        client.send(f"{len(AdminVerify):04}".encode('utf-8'))
+                        client.send(AdminVerify.encode('utf-8'))
+                        print("⚠️ Too many attempts! Exiting...\n")
+                        exit()
+
+                    while True:
+                        AdminVerify = input("Enter the Admin Password:")
+                        if len(AdminVerify) <= 8:
+                            print("❗ Password must be at least 8 characters long.\n")
+                        else:
+                            break
+                        
                     client.send(f"{len(AdminVerify):04}".encode('utf-8'))
                     client.send(AdminVerify.encode('utf-8'))
-                    print("⚠️ Too many attempts! Exiting...\n")
-                    exit()
 
-                while True:
-                    AdminVerify = input("Enter the Admin Password:")
-                    if len(AdminVerify) <= 8:
-                        print("❗ Password must be at least 8 characters long.\n")
+                    AdminVerify = int(client.recv(4).decode('utf-8'))
+                    AdminVerify = client.recv(AdminVerify).decode('utf-8')
+                    
+                    if AdminVerify == 'access denied':
+                        Admin_PASS_Try += 1
+                        print("🚫 Access Denied!\n")
                     else:
                         break
-                    
-                client.send(f"{len(AdminVerify):04}".encode('utf-8'))
-                client.send(AdminVerify.encode('utf-8'))
-
-                AdminVerify = int(client.recv(4).decode('utf-8'))
-                AdminVerify = client.recv(AdminVerify).decode('utf-8')
-                
-                if AdminVerify == 'access denied':
-                    Admin_PASS_Try += 1
-                    print("🚫 Access Denied!\n")
-                else:
-                    break
-        else:
-            pass            
+            elif check.lower() == 'no':
+                break 
+            else:
+                print("❗ Invalid Input!\n")          
         
 except KeyboardInterrupt:
     print("Keyboard Interrupt!")
@@ -152,7 +155,7 @@ def receive():
                 print("❌ You are disconnected from the server!\n")
                 break
             else:
-                print(message)
+                print(f"{message}\n")
 
     except Exception as e:
         print(f"⚠️ [ERROR] : {e}\n")
@@ -169,7 +172,7 @@ def main():
                     break
             
                 if all (character in message for character in [ClientPrefix,'help']):
-                    print(f"🟢 {ClientPrefix}online: To check the number of online Members\n👑 {ClientPrefix}adminlist: To Show all Admin Online!\n🚫 {ClientPrefix}ban: To Ban a Member (ADMIN ONLY)\n✅ {ClientPrefix}unban: To UnBan a Member (ADMIN ONLY)\n📋 {ClientPrefix}banlist: To check the list of Banned Members (ADMIN ONLY)\n👢 {ClientPrefix}kick: To Kick a Member (ADMIN ONLY)\n🛑{ClientPrefix}shutdown: To shutdown Server (ADMIN ONLY) \n🚪 {ClientPrefix}exit: To exit the chat\n")
+                    print(f"🟢 {ClientPrefix}online: To check the number of online Members\n👑 {ClientPrefix}adminlist: To Show all Admin Online!\n🚫 {ClientPrefix}ban: To Ban a Member (ADMIN ONLY)\n✅ {ClientPrefix}unban: To UnBan a Member (ADMIN ONLY)\n📋 {ClientPrefix}banlist: To check the list of Banned Members (ADMIN ONLY)\n👢 {ClientPrefix}kick: To Kick a Member (ADMIN ONLY)\n🛑 {ClientPrefix}shutdown: To shutdown Server (ADMIN ONLY)\n🌐 {ClientPrefix}serverinfo: To now the server info \n🚪 {ClientPrefix}exit: To exit the chat\n")
 
                 elif all (character in message for character in [ClientPrefix,'exit']):
                     send(f"{ClientPrefix}exit")
@@ -187,7 +190,9 @@ def main():
                         print("❗Invalid Input!\n")
                     except KeyboardInterrupt:
                         pass
-                    
+                elif all (character in message for character in [ClientPrefix,'serverinfo']):
+                    send(f"{ClientPrefix}serverinfo")
+
                 elif all (character in message for character in [ClientPrefix,'kick']):
                     send(f"{ClientPrefix}kick")
                     try:

@@ -42,6 +42,34 @@ def client_run():
         print(f"⚠️ An error occurred:{e}")
 
 
+def Input():
+    while True:
+        try:
+            IP_Address = input("🌐 Enter the Server IP: ")
+            if is_valid_ip(IP_Address):
+                with open('config.json', 'w') as f:
+                    data['SERVER_IP'] = IP_Address
+                    json.dump(data, f)
+                break
+            else:
+                print("❌ Invalid IP address. Please enter a valid IP address.")
+        except ValueError:
+            print("❌ Invalid IP address. Please enter a valid IP address.")
+    while True:
+        try:
+            PORT = int(input("🔌 Enter the Server PORT: "))
+            if 1 <= PORT <= 65535:
+                with open('config.json', 'w') as f:
+                    data['PORT'] = PORT
+                    json.dump(data, f)
+                break
+            else:
+                print("❌ Invalid port. Please enter a number between 1 and 65535.")
+        except ValueError:
+            print("❌ Invalid port. Please enter a valid number.")
+    return IP_Address, PORT
+
+
 if __name__ == '__main__':
     
     with open('config.json') as f:
@@ -59,31 +87,8 @@ if __name__ == '__main__':
             choice = input("Enter your choice: ")
             
             if all (character in choice for character in [Prefix, 'start_server']):
-                while True:
-                    try:
-                        IP_Address = input("🌐 Enter the Server IP: ")
-                        if is_valid_ip(IP_Address):
-                            with open('config.json', 'w') as f:
-                                data['SERVER_IP'] = IP_Address
-                                json.dump(data, f)
-                            break
-                        else:
-                            print("❌ Invalid IP address. Please enter a valid IP address.")
-                    except ValueError:
-                        print("❌ Invalid IP address. Please enter a valid IP address.")
-                while True:
-                    try:
-                        PORT = int(input("🔌 Enter the Server PORT: "))
-                        if 1 <= PORT <= 65535:
-                            with open('config.json', 'w') as f:
-                                data['PORT'] = PORT
-                                json.dump(data, f)
-                            break
-                        else:
-                            print("❌ Invalid port. Please enter a number between 1 and 65535.")
-                    except ValueError:
-                        print("❌ Invalid port. Please enter a valid number.")
-
+                
+                IP_Address, PORT = Input()
                 ADDR = (IP_Address, PORT)
                 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 server.bind(ADDR)
@@ -92,33 +97,8 @@ if __name__ == '__main__':
                 break;
             
             elif all (character in choice for character in [Prefix, 'start_client']):
-                while True:
-                    try:
-                        IP_Address = input("🌐 Enter the Server IP: ")
-                        if is_valid_ip(IP_Address):
-                            with open('config.json', 'w') as f:
-                                data['SERVER_IP'] = IP_Address
-                                json.dump(data, f)
-                            break
-                        else:
-                            print("❌ Invalid IP address. Please enter a valid IP address.")
-                    except ValueError:
-                        print("❌ Invalid IP address. Please enter a valid IP address.")
-
-                while True:
-                    try:
-                        PORT = int(input("🔌 Enter the Server PORT: "))
-                        if 1 <= PORT <= 65535:
-                            with open('config.json', 'w') as f:
-                                data['PORT'] = PORT
-                                json.dump(data, f)
-                            break
-                        else:
-                            print("❌ Invalid port. Please enter a number between 1 and 65535.")
-                    except ValueError:
-                        print("❌ Invalid port. Please enter a valid number.")
-                client_run()    
-                time.sleep(2)
+                Input()
+                client_run()
                 break;
             elif all (character in choice for character in [Prefix, 'exit']):
                 print("👋 Exiting...")

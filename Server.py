@@ -133,33 +133,37 @@ def handle_client(connection, addr, ADDR, SERVER_PASSWORD, ADMIN_PASSWORD, UserN
         AdminVerify = "admin?"
         connection.send(f"{len(AdminVerify):04}".encode('utf-8'))
         connection.send(AdminVerify.encode('utf-8'))
+        while True:
+            AdminVerify = connection.recv(4).decode('utf-8')
+            AdminVerify = connection.recv(int(AdminVerify)).decode('utf-8')
 
-        AdminVerify = connection.recv(4).decode('utf-8')
-        AdminVerify = connection.recv(int(AdminVerify)).decode('utf-8')
-
-        if AdminVerify.lower() == 'yes':
-            while True:
-                AdminPassword_length = int(connection.recv(4).decode('utf-8'))
-                AdminPassword = connection.recv(AdminPassword_length).decode('utf-8')
-                if AdminPassword == ADMIN_PASSWORD:
-                    AdminVerify = "access granted"
-                    connection.send(f"{len(AdminVerify):04}".encode('utf-8'))
-                    connection.send(AdminVerify.encode('utf-8'))
-                    connection.send("Welcome 👑 Admin!".encode('utf-8'))
-                    print(f"👑 [{x.strftime('%I:%M %p')}][{UserName}:{addr}] Join as Admin!")
-                    Admin.append(connection)
-                    break
-                elif AdminPassword != ADMIN_PASSWORD:
-                    AdminVerify = "access denied"
-                    connection.send(f"{len(AdminVerify):04}".encode('utf-8'))
-                    connection.send(AdminVerify.encode('utf-8'))
-                    print(f"❌ [{x.strftime('%I:%M %p')}][{UserName}:{addr}] was trying to connect to the server[{ADDR}] but access denied!")
-                elif AdminPassword == 'Too many attempts!':
-                    UserNames.remove(f"{UserName}:{addr}")
-                    print(f"❌ [{x.strftime('%I:%M %p')}][{UserName}:{addr}] was trying to connect to the server as Admin [{ADDR}] but too many attempts!")
-                    Clients.remove(connection)
-                    connection.close()
-
+            if AdminVerify.lower() == 'yes':
+                while True:
+                    AdminPassword_length = int(connection.recv(4).decode('utf-8'))
+                    AdminPassword = connection.recv(AdminPassword_length).decode('utf-8')
+                    if AdminPassword == ADMIN_PASSWORD:
+                        AdminVerify = "access granted"
+                        connection.send(f"{len(AdminVerify):04}".encode('utf-8'))
+                        connection.send(AdminVerify.encode('utf-8'))
+                        connection.send("Welcome 👑 Admin!".encode('utf-8'))
+                        print(f"👑 [{x.strftime('%I:%M %p')}][{UserName}:{addr}] Join as Admin!")
+                        Admin.append(connection)
+                        break
+                    elif AdminPassword != ADMIN_PASSWORD:
+                        AdminVerify = "access denied"
+                        connection.send(f"{len(AdminVerify):04}".encode('utf-8'))
+                        connection.send(AdminVerify.encode('utf-8'))
+                        print(f"❌ [{x.strftime('%I:%M %p')}][{UserName}:{addr}] was trying to connect to the server[{ADDR}] but access denied!")
+                    elif AdminPassword == 'Too many attempts!':
+                        UserNames.remove(f"{UserName}:{addr}")
+                        print(f"❌ [{x.strftime('%I:%M %p')}][{UserName}:{addr}] was trying to connect to the server as Admin [{ADDR}] but too many attempts!")
+                        Clients.remove(connection)
+                        connection.close()
+            elif AdminVerify.lower() == 'no':
+                connection.send("Welcome to the Server!".encode('utf-8'))
+                break
+            else:
+                pass
     except Exception as e:
         print(f"⚠️ [ERROR] : {e}")
         return 
@@ -190,6 +194,12 @@ def handle_client(connection, addr, ADDR, SERVER_PASSWORD, ADMIN_PASSWORD, UserN
                         else:
                             connection.send("🔒You do not have permission to execute this command.".encode('utf-8'))
                             print(f"🔒 [{x.strftime('%I:%M %p')}][{UserName}:{addr}] tried to execute an {message} command.")
+                    
+                    elif command.startswith("serverinfo"):
+                        connection.send(f"🔗 [SERVER INFO] : {ADDR}".encode('utf-8'))
+                        connection.send(f"🟢 [ONLINE USERS] : {threading.active_count()-1}\n".encode('utf-8'))
+                        connection.send(f"👑 [ADMINS ONLINE] : {len(Admin)}".encode('utf-8'))
+                    
                     elif command.startswith("adminlist"):
                         if len(Admin) == 0:
                             connection.send("⛔ No Admins are online.".encode('utf-8'))
@@ -205,7 +215,7 @@ def handle_client(connection, addr, ADDR, SERVER_PASSWORD, ADMIN_PASSWORD, UserN
                         broadcast(f"🔴 [{x.strftime('%I:%M %p')}][{UserName}:{addr}] Disconnected from the Server[{ADDR}]!")
 
                     elif all(character in message for character in [ClientPrefix, 'online']):
-                        connection.send(f"🟢 [ONLINE CONNECTION] : {threading.active_count()-1}".encode('utf-8'))
+                        connection.send(f"🟢 [ONLINE USERS] : {threading.active_count()-1}".encode('utf-8'))
                         for i in UserNames:
                             connection.send(f"🔹[{i}]".encode('utf-8'))
                 else:
