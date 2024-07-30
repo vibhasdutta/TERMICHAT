@@ -8,6 +8,9 @@
 - Client Connection: Users connect to the server using its IP address and port.
 - Message Exchange: Messages are sent through the server, which broadcasts them to all connected clients.
 - **Why TCP?** <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Satellite%20Antenna.png" alt="Satellite Antenna" width="25" height="25" />
+- **Reliability:** Ensures messages are delivered in order and without errors.
+- **Connection-Oriented:** Maintains a stable connection for continuous chat.
+- **Error Handling:** Automatically manages lost packets.
 <img src="https://media.geeksforgeeks.org/wp-content/uploads/Socket_server-1.png" width="500" height="500" />
 
 ### ***KEY FEATURES :***
@@ -15,9 +18,6 @@
 - **Local Hosting:** Easy setup on your local network.
 - **User-Friendly:** Simple terminal interface.
 - **Lightweight:** Fast and efficient.
-- **Reliability:** Ensures messages are delivered in order and without errors.
-- **Connection-Oriented:** Maintains a stable connection for continuous chat.
-- **Error Handling:** Automatically manages lost packets.
 - **Admin Management:** Admin can manage users and chat settings.
 
 ### ***REQUIRMENTS :***
