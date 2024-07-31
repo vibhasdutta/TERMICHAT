@@ -43,6 +43,7 @@ Downloading Project Files <img src="https://raw.githubusercontent.com/Tarikul-Is
   ```
   https://github.com/vibhasdutta/TERMICHAT.git
   ```
+- After Downloading the files open the any Terminla or IDE of your choice and ` Run the Interface.py` File.
 ### ***COMMANDS :*** 
 - **?start_server :** To host a Server and start chatting.
 - **?start_client :** To join a Server and start chatting.
