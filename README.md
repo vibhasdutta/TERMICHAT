@@ -23,6 +23,7 @@
 ### ***REQUIRMENTS :***
 - Python 3.10 or Above
 - Windows or Mac os
+- OpenSSL
 > [!WARNING]  
 > - We ar Working on Linux if you want to run the termichat
 > - In Server.py file Inside start() function
@@ -43,7 +44,12 @@ Downloading Project Files <img src="https://raw.githubusercontent.com/Tarikul-Is
   ```
   https://github.com/vibhasdutta/TERMICHAT.git
   ```
-- After Downloading the files open the any Terminla or IDE of your choice and ` Run the Interface.py` File.
+- Open Termichat folder and change the parameter of `openssl.cnf` File.
+- Open the any Terminal in the Termichat dir and `Run this`
+```
+openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -keyout server.key -out server.crt -config openssl.cnf
+```
+- After Downloading the files open the any Terminal or IDE of your choice and ` Run the Interface.py` File.
 ### ***COMMANDS :*** 
 - **?start_server :** To host a Server and start chatting.
 - **?start_client :** To join a Server and start chatting.
