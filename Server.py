@@ -159,6 +159,7 @@ def handle_client(connection, addr, ADDR, SERVER_PASSWORD, ADMIN_PASSWORD, UserN
                         print(f"❌ [{x.strftime('%I:%M %p')}][{UserName}:{addr}] was trying to connect to the server as Admin [{ADDR}] but too many attempts!")
                         Clients.remove(connection)
                         connection.close()
+                break
             elif AdminVerify.lower() == 'no':
                 connection.send("Welcome to the Server!".encode('utf-8'))
                 break
@@ -197,7 +198,7 @@ def handle_client(connection, addr, ADDR, SERVER_PASSWORD, ADMIN_PASSWORD, UserN
                     
                     elif command.startswith("serverinfo"):
                         connection.send(f"🔗 [SERVER INFO] : {ADDR}".encode('utf-8'))
-                        connection.send(f"🟢 [ONLINE USERS] : {threading.active_count()-1}\n".encode('utf-8'))
+                        connection.send(f"🟢 [ONLINE USERS] : {threading.active_count()-1}".encode('utf-8'))
                         connection.send(f"👑 [ADMINS ONLINE] : {len(Admin)}".encode('utf-8'))
                     
                     elif command.startswith("adminlist"):

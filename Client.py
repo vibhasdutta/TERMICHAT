@@ -1,6 +1,7 @@
 import socket
 import json
 import threading
+import ssl
 
 try:    
 
@@ -39,7 +40,13 @@ try:
 
 
     ADDR=(CLIENT_IP,PORT)
-    client=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    
+    context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+    context.load_verify_locations('server.crt')
+    
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client = context.wrap_socket(client, server_hostname=CLIENT_IP)
+
     client.connect(ADDR)
     client.send(f"{len(UserName):04}".encode('utf-8'))
     client.send(UserName.encode('utf-8'))
@@ -92,41 +99,45 @@ try:
             check = input("👑 Are you an Admin! [Yes/No]: ")
             client.send(f"{len(check):04}".encode('utf-8'))
             client.send(check.encode('utf-8'))
-            
+
             if check.lower() == 'yes':
-                
                 Admin_PASS_Try = 0
                 while True:
-
                     if Admin_PASS_Try == 3:
-                        AdminVerfiy = 'Too many attempts!'
+                        AdminVerify = 'Too many attempts!'
                         client.send(f"{len(AdminVerify):04}".encode('utf-8'))
                         client.send(AdminVerify.encode('utf-8'))
                         print("⚠️ Too many attempts! Exiting...\n")
                         exit()
 
                     while True:
-                        AdminVerify = input("Enter the Admin Password:")
-                        if len(AdminVerify) <= 8:
+                        AdminPassword = input("Enter the Admin Password: ")
+                        if len(AdminPassword) <= 8:
                             print("❗ Password must be at least 8 characters long.\n")
                         else:
                             break
-                        
-                    client.send(f"{len(AdminVerify):04}".encode('utf-8'))
-                    client.send(AdminVerify.encode('utf-8'))
 
-                    AdminVerify = int(client.recv(4).decode('utf-8'))
-                    AdminVerify = client.recv(AdminVerify).decode('utf-8')
-                    
+                    client.send(f"{len(AdminPassword):04}".encode('utf-8'))
+                    client.send(AdminPassword.encode('utf-8'))
+
+                    response_length = int(client.recv(4).decode('utf-8'))
+                    AdminVerify = client.recv(response_length).decode('utf-8')
+
                     if AdminVerify == 'access denied':
                         Admin_PASS_Try += 1
                         print("🚫 Access Denied!\n")
                     else:
+                        print("✅ Access Granted!\n")
                         break
+
+                if AdminVerify != 'access denied':
+                    break
+
             elif check.lower() == 'no':
-                break 
+                break
             else:
-                print("❗ Invalid Input!\n")          
+                print("❗ Invalid Input!\n")
+          
         
 except KeyboardInterrupt:
     print("Keyboard Interrupt!")
