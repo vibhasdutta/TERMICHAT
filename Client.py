@@ -162,12 +162,13 @@ def receive():
     try:
         while True:
             message = client.recv(2048).decode('utf-8')
-            if message == f"[200]Exit" or  message == "[200]shutdown":
+            if message == f"[200]Exit":
                 print("❌ You are disconnected from the server!\n")
                 break
             else:
                 print(f"{message}\n")
-
+    except ConnectionResetError or ConnectionAbortedError:
+        print(f"🔒 Connection was closed by the Server [{ADDR}]!\n")
     except Exception as e:
         print(f"⚠️ [ERROR] : {e}\n")
 
@@ -183,7 +184,7 @@ def main():
                     break
             
                 if all (character in message for character in [ClientPrefix,'help']):
-                    print(f"🟢 {ClientPrefix}online: To check the number of online Members\n👑 {ClientPrefix}adminlist: To Show all Admin Online!\n🚫 {ClientPrefix}ban: To Ban a Member (ADMIN ONLY)\n✅ {ClientPrefix}unban: To UnBan a Member (ADMIN ONLY)\n📋 {ClientPrefix}banlist: To check the list of Banned Members (ADMIN ONLY)\n👢 {ClientPrefix}kick: To Kick a Member (ADMIN ONLY)\n🛑 {ClientPrefix}shutdown: To shutdown Server (ADMIN ONLY)\n🌐 {ClientPrefix}serverinfo: To now the server info \n🚪 {ClientPrefix}exit: To exit the chat\n")
+                    print(f"🟢 {ClientPrefix}online: To check the number of online Members\n👑 {ClientPrefix}adminlist: To Show all Admin Online!\n🚫 {ClientPrefix}ban: To Ban a Member (ADMIN ONLY)\n✅ {ClientPrefix}unban: To UnBan a Member (ADMIN ONLY)\n📋 {ClientPrefix}banlist: To check the list of Banned Members (ADMIN ONLY)\n👢 {ClientPrefix}kick: To Kick a Member (ADMIN ONLY)\n🌐 {ClientPrefix}serverinfo: To now the server info \n🚪 {ClientPrefix}exit: To exit the chat\n")
 
                 elif all (character in message for character in [ClientPrefix,'exit']):
                     send(f"{ClientPrefix}exit")
