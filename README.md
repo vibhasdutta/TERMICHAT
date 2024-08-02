@@ -50,7 +50,8 @@ Downloading Project Files <img src="https://raw.githubusercontent.com/Tarikul-Is
 openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -keyout server.key -out server.crt -config openssl.cnf
 ```
 - Share the `server.cert` File with the clients who want to join.
-- After Downloading the files open the any Terminal or IDE of your choice and ` Run the Interface.py` File.
+- After that open any Terminal or IDE of your choice and ` Run the Interface.py` File.
+
 ### ***COMMANDS :*** 
 - **?start_server :** To host a Server and start chatting.
 - **?start_client :** To join a Server and start chatting.
