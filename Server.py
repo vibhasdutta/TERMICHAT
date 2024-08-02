@@ -81,13 +81,7 @@ def handle_admin_command(command,connection,x):
             broadcast(f"👢 [{x.strftime('%I:%M %p')}][{UserNames[KickIndex]}] has been kicked.")
         except Exception as e:
             connection.send(f"⚠️ [ERROR] : {e}".encode('utf-8'))
-    elif command.startswith("shutdown"):
-        broadcast("🛑 Server is shutting down!")
-        connection.send(f"[200]shutdown".encode('utf-8'))
-        import time
-        time.sleep(4)
-        socket.socket(socket.AF_INET, socket.SOCK_STREAM).close()
-        exit()
+
 
 def handle_client(connection, addr, ADDR, SERVER_PASSWORD, ADMIN_PASSWORD, UserName, ClientPrefix):
     
@@ -231,12 +225,18 @@ def handle_client(connection, addr, ADDR, SERVER_PASSWORD, ADMIN_PASSWORD, UserN
             break
     try:
         if len(Admin) != 0:
-            Admin.remove(connection)
-        UserNames.remove(f"{UserName}:{addr}")
-        Clients.remove(connection)
+            if connection in Admin:
+                Admin.remove(connection)
+        for client in Clients:
+            if client == connection:
+                index = Clients.index(client)
+                UserNames.remove(f"{UserName}:{addr}")
+                Clients.remove(connection)
+                connection.close()
+                break
         connection.close()
     except Exception as e:
-        print(f"⚠️ [ERROR] : {e}")
+        print(f"⚠️ [handle_client:ERROR] : {e}")
 
 def start(server, ADDR, Ip_Address, PORT):
 
