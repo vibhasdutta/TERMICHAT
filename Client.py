@@ -1,7 +1,7 @@
 import socket
 import json
 import threading
-import ssl
+# import ssl
 
 try:    
 
@@ -41,11 +41,11 @@ try:
 
     ADDR=(CLIENT_IP,PORT)
     
-    context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-    context.load_verify_locations('server.crt')
+    # context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+    # context.load_verify_locations('server.crt')
     
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client = context.wrap_socket(client, server_hostname=CLIENT_IP)
+    # client = context.wrap_socket(client, server_hostname=CLIENT_IP)
 
     client.connect(ADDR)
     client.send(f"{len(UserName):04}".encode('utf-8'))
