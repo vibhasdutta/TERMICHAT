@@ -23,7 +23,7 @@
 ### ***REQUIRMENTS :***
 - Python 3.10 or Above
 - Windows or Mac os
-- OpenSSL
+<!--- OpenSSL--->
 > [!WARNING]  
 > - We ar Working on Linux if you want to run the termichat
 > - In Server.py file Inside start() function
@@ -44,12 +44,14 @@ Downloading Project Files <img src="https://raw.githubusercontent.com/Tarikul-Is
   ```
   https://github.com/vibhasdutta/TERMICHAT.git
   ```
+<!---
 - Open Termichat folder and change the parameter of `openssl.cnf` File.
 - Open the any Terminal in the Termichat dir and `Run this`
 ```
 openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -keyout server.key -out server.crt -config openssl.cnf
 ```
 - Share the `server.cert` File with the clients who want to join.
+-->
 - After that open any Terminal or IDE of your choice and ` Run the Interface.py` File.
 
 ### ***COMMANDS :*** 
