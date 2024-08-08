@@ -92,12 +92,12 @@ if __name__ == '__main__':
                 IP_Address, PORT = Input()
                 ADDR = (IP_Address, PORT)
                 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                # SSL context
-                context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-                context.load_cert_chain(certfile='server.crt', keyfile='server.key')
+                # # SSL context
+                # context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+                # context.load_cert_chain(certfile='server.crt', keyfile='server.key')
                 
-                # Wrap socket
-                server = context.wrap_socket(server, server_side=True)
+                # # Wrap socket
+                # server = context.wrap_socket(server, server_side=True)
                 
                 server.bind(ADDR)
                 start(server, ADDR, IP_Address, PORT)
