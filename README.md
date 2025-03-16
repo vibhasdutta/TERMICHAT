@@ -60,6 +60,6 @@ openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -keyout server.key -out
 - **?help :** This command will work after joining a Server It will show all other command which work on the Server.
 
 ### <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Red%20Heart.png" alt="Red Heart" width="25" height="25" />***Loved my work***
-- <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Star.png" alt="Star" width="25" height="25" /> [Give a Star to this project](https://github.com/vibhasdutta/TERMICHAT/edit/TERMICHAT_MAIN)
+- <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Star.png" alt="Star" width="25" height="25" /> [Give a Star to this project](https://github.com/vibhasdutta/TERMICHAT/tree/TERMICHAT_MAIN?tab=readme-ov-file)
 - <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Hand%20gestures/Handshake.png" alt="Handshake" width="25" height="25" /> [Follow me](https://github.com/vibhasdutta)
   
