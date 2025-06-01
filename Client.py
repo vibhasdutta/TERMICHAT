@@ -6,7 +6,10 @@
 import socket
 import json
 import threading
+from colorama import init, Fore, Style
 
+# Initialize colorama
+init(autoreset=True)
 try:
     with open('config.json') as f:
         data = json.load(f)
@@ -28,18 +31,24 @@ TermiChat Client — Version 1.0 | Author: VibhasDutta | Updated: 2025-06-01
 
     check = input("❓ Do you want to change the Settings? [Yes/No]: ")
     if check.lower() == 'yes':
-        check = input("🔧 What do you want to change? [USERNAME/PREFIX]: ")
+        check = input("🔧 What do you want to change? [USERNAME/PREFIX/IP]: ")
 
         if check.lower() == 'username':
             UserName = input("👤 Enter the User Name: ")
         elif check.lower() == 'prefix':
             ClientPrefix = input("🏷️ Enter the Prefix: ")
+        elif check.lower() == 'ip' :
+            Ip = input("🌐 Enter the Ip Address: ")
+            Port = int(input("🔌 Enter the Port: "))
+            
         else:
             print("⚠️ Invalid Input!\n")
 
         with open('config.json', 'w') as f:
             data['USER_NAME'] = UserName
             data['PREFIX'] = ClientPrefix
+            data['SERVER_IP'] = Ip
+            data['PORT'] = Port
             json.dump(data, f)
     else:
         with open('config.json', 'w') as f:
@@ -139,20 +148,48 @@ def send(msg):
     client.send(send_length)
     client.send(message)
 
+def wait_for_index_list():
+    try:
+        user_list = []
+        while True:
+            msg = client.recv(2048).decode('utf-8')
+            if msg.startswith("🔹[") or msg.startswith("🔸["):
+                print(Fore.CYAN + msg)
+                user_list.append(msg)
+            elif msg.startswith("Enter index"):
+                print(Fore.YELLOW + msg)
+                return True
+            elif msg.startswith("⚠️") or msg.startswith("⛔") or msg.startswith("❌"):
+                print(Fore.RED + msg)
+                return False
+            else:
+                print(msg)
+                return False
+    except Exception as e:
+        print(f"⚠️ Error receiving index list: {e}")
+        return False
 
 def receive():
     try:
         while True:
             message = client.recv(2048).decode('utf-8')
-            if message == f"[200]Exit":
-                print("❌ You are disconnected from the server!\n")
+            if message == "[200]Exit":
+                print(Fore.RED + "❌ You are disconnected from the server!\n")
                 break
+            elif "🔗" in message:
+                print(Fore.GREEN + message + Style.RESET_ALL)
+            elif "🚫" in message or "❌" in message:
+                print(Fore.RED + message + Style.RESET_ALL)
+            elif "👑" in message:
+                print(Fore.MAGENTA + message + Style.RESET_ALL)
+            elif "📢" in message or "🟢" in message:
+                print(Fore.CYAN + message + Style.RESET_ALL)
+            elif "💠" in message:
+                print(Fore.YELLOW + message + Style.RESET_ALL)
             else:
-                print(f"{message}\n")
+                print(message)
     except Exception as e:
-        print(f"🔒 Connection was closed by the Server [{ADDR}]!\n")
-        print(f"⚠️ [ERROR] : {e}\n")
-
+        print(Fore.RED + f"🔒 Connection closed! [{ADDR}]\n⚠️ ERROR: {e}\n")
 
 def main():
     
@@ -186,33 +223,38 @@ def main():
 
             elif cmd.startswith(f"{ClientPrefix}unban"):
                 send(f"{ClientPrefix}unban")
-                index = input("🔢 Enter index to unban: ")
-                client.send(f"{len(index):04}".encode('utf-8'))
-                client.send(index.encode('utf-8'))
+                if wait_for_index_list():
+                    index = input("🔢 Enter index to unban: ")
+                    client.send(f"{len(index):04}".encode('utf-8'))
+                    client.send(index.encode('utf-8'))
 
             elif cmd.startswith(f"{ClientPrefix}ban") and not cmd.startswith(f"{ClientPrefix}unban"):
                 send(f"{ClientPrefix}ban")
-                index = input("🔢 Enter index to ban: ")
-                client.send(f"{len(index):04}".encode('utf-8'))
-                client.send(index.encode('utf-8'))
+                if wait_for_index_list():
+                    index = input("🔢 Enter index to ban: ")
+                    client.send(f"{len(index):04}".encode('utf-8'))
+                    client.send(index.encode('utf-8'))
 
             elif cmd.startswith(f"{ClientPrefix}kick"):
                 send(f"{ClientPrefix}kick")
-                index = input("🔢 Enter index to kick: ")
-                client.send(f"{len(index):04}".encode('utf-8'))
-                client.send(index.encode('utf-8'))
+                if wait_for_index_list():
+                    index = input("🔢 Enter index to kick: ")
+                    client.send(f"{len(index):04}".encode('utf-8'))
+                    client.send(index.encode('utf-8'))
 
             elif cmd.startswith(f"{ClientPrefix}mute"):
                 send(f"{ClientPrefix}mute")
-                index = input("🔢 Enter index to mute: ")
-                client.send(f"{len(index):04}".encode('utf-8'))
-                client.send(index.encode('utf-8'))
+                if wait_for_index_list():
+                    index = input("🔢 Enter index to mute: ")
+                    client.send(f"{len(index):04}".encode('utf-8'))
+                    client.send(index.encode('utf-8'))
 
             elif cmd.startswith(f"{ClientPrefix}unmute"):
                 send(f"{ClientPrefix}unmute")
-                index = input("🔢 Enter index to unmute: ")
-                client.send(f"{len(index):04}".encode('utf-8'))
-                client.send(index.encode('utf-8'))
+                if wait_for_index_list():
+                    index = input("🔢 Enter index to unmute: ")
+                    client.send(f"{len(index):04}".encode('utf-8'))
+                    client.send(index.encode('utf-8'))
 
             elif cmd.startswith(f"{ClientPrefix}announce"):
                 send(f"{ClientPrefix}announce")
