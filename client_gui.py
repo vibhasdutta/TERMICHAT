@@ -24,6 +24,7 @@ class ChatClient:
         self.admin_users = []
         self.banned_users = []
         self.muted_users = []
+        self.receiving = False  # Flag to control message receiving
         
         # Initialize GUI
         self.setup_gui()
@@ -290,7 +291,7 @@ class ChatClient:
                 try:
                     index = self.online_users.index(user)
                     self.send_command(f"{self.client_prefix}kick")
-                    threading.Thread(target=lambda: self.send_followup_data(str(index + 1)), daemon=True).start()
+                    threading.Thread(target=lambda: self.send_followup_data(str(index)), daemon=True).start()
                 except ValueError:
                     messagebox.showerror("Error", "User not found in online list!")
         elif user == self.user_name:
@@ -303,7 +304,7 @@ class ChatClient:
                 try:
                     index = self.online_users.index(user)
                     self.send_command(f"{self.client_prefix}ban")
-                    threading.Thread(target=lambda: self.send_followup_data(str(index + 1)), daemon=True).start()
+                    threading.Thread(target=lambda: self.send_followup_data(str(index)), daemon=True).start()
                 except ValueError:
                     messagebox.showerror("Error", "User not found in online list!")
         elif user == self.user_name:
@@ -316,7 +317,7 @@ class ChatClient:
                 try:
                     index = self.online_users.index(user)
                     self.send_command(f"{self.client_prefix}mute")
-                    threading.Thread(target=lambda: self.send_followup_data(str(index + 1)), daemon=True).start()
+                    threading.Thread(target=lambda: self.send_followup_data(str(index)), daemon=True).start()
                 except ValueError:
                     messagebox.showerror("Error", "User not found in online list!")
         elif user == self.user_name:
@@ -329,7 +330,7 @@ class ChatClient:
                 try:
                     index = self.muted_users.index(user)
                     self.send_command(f"{self.client_prefix}unmute")
-                    threading.Thread(target=lambda: self.send_followup_data(str(index + 1)), daemon=True).start()
+                    threading.Thread(target=lambda: self.send_followup_data(str(index)), daemon=True).start()
                 except ValueError:
                     messagebox.showerror("Error", "User not found in muted list!")
         elif user not in self.muted_users:
@@ -507,9 +508,6 @@ class ChatClient:
 🌐 {self.client_prefix}serverinfo
    └ Display server information
 
-🔧 {self.client_prefix}shutdown
-   └ Shutdown server (Admin only)
-
 🚪 {self.client_prefix}exit
    └ Exit the chat
 
@@ -606,49 +604,67 @@ class ChatClient:
 
     def handle_admin_target_selection(self, action):
         try:
-            time.sleep(0.2)
-            self.client.settimeout(2.0)
-
+            time.sleep(0.3)  # Give server time to send list
+            
             options = []
-            while True:
-                msg = self.client.recv(2048).decode('utf-8')
-                if msg.startswith("🔹[") or msg.startswith("🔸["):
-                    options.append(msg)
-                elif msg.startswith("⛔") or msg.startswith("⚠️"):
-                    messagebox.showinfo("Info", msg)
-                    self.client.settimeout(None)
-                    return
-                elif msg.startswith("Enter index to"):
-                    break  # Server is ready for index input
-                else:
-                    # Probably a broadcast or unrelated message
-                    self.add_to_chat(msg)
+            timeout_counter = 0
+            max_timeout = 50  # 5 seconds max wait (50 * 0.1s)
+            
+            while timeout_counter < max_timeout:
+                try:
+                    self.client.settimeout(0.1)
+                    msg = self.client.recv(2048).decode('utf-8')
+                    if not msg:
+                        break
+                        
+                    if msg.startswith("🔹[") or msg.startswith("🔸["):
+                        options.append(msg)
+                        self.root.after(0, lambda m=msg: self.add_to_chat(m, "system"))
+                    elif msg.startswith("⛔") or msg.startswith("⚠️"):
+                        self.root.after(0, lambda m=msg: messagebox.showinfo("Info", m))
+                        self.client.settimeout(None)
+                        return
+                    elif "Enter index to" in msg:
+                        self.root.after(0, lambda m=msg: self.add_to_chat(m, "system"))
+                        break  # Server is ready for index input
+                    else:
+                        # Probably a broadcast or unrelated message
+                        self.root.after(0, lambda m=msg: self.add_to_chat(m))
+                        
+                except socket.timeout:
+                    timeout_counter += 1
+                    continue
+                except Exception as e:
+                    self.root.after(0, lambda e=e: self.add_to_chat(f"❌ Error receiving data: {e}", "error"))
                     break
 
             self.client.settimeout(None)
 
             if not options:
-                messagebox.showinfo("Info", "No users available for this action.")
+                self.root.after(0, lambda: messagebox.showinfo("Info", "No users available for this action."))
                 return
 
             options_text = "\n".join(options)
-            index = simpledialog.askinteger("Select User", f"{options_text}\n\nEnter index:")
+            # Use root.after to ensure GUI operations happen on main thread
+            self.root.after(0, lambda: self.prompt_for_index(options_text, action))
 
-            if index is not None:
-                self.send_followup_data(str(index))
-
-        except socket.timeout:
-            messagebox.showerror("Timeout", "No user list received from server.")
         except Exception as e:
-            self.add_to_chat(f"❌ Admin action error: {e}", "error")
+            self.root.after(0, lambda e=e: self.add_to_chat(f"❌ Admin action error: {e}", "error"))
+
+    def prompt_for_index(self, options_text, action):
+        """Prompt user for index selection on main thread"""
+        index = simpledialog.askinteger("Select User", f"{options_text}\n\nEnter index:")
+        if index is not None:
+            threading.Thread(target=lambda: self.send_followup_data(str(index)), daemon=True).start()
 
     def send_followup_data(self, data):
         time.sleep(0.1)  # Small delay to ensure command is processed first
         try:
-            self.client.send(f"{len(data):04}".encode('utf-8'))
-            self.client.send(data.encode('utf-8'))
+            if self.connected and self.client:
+                self.client.send(f"{len(data):04}".encode('utf-8'))
+                self.client.send(data.encode('utf-8'))
         except Exception as e:
-            self.add_to_chat(f"❌ Error sending followup data: {e}", "error")
+            self.root.after(0, lambda e=e: self.add_to_chat(f"❌ Error sending followup data: {e}", "error"))
     
     def send_command(self, command):
         if not self.connected:
@@ -665,6 +681,7 @@ class ChatClient:
             
         try:
             self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.client.settimeout(10.0)  # 10 second timeout for connection
             self.client.connect((self.server_ip, self.port))
             
             # Send username and prefix
@@ -687,9 +704,14 @@ class ChatClient:
                 return
                 
             # Admin authentication if needed
-            self.check_admin_auth()
+            if not self.check_admin_auth():
+                return
+            
+            # Remove timeout for normal operation
+            self.client.settimeout(None)
             
             self.connected = True
+            self.receiving = True
             self.status_label.config(text="🟢 Connected")
             self.connect_btn.config(text="🔌 Disconnect", command=self.disconnect_from_server)
             self.message_entry.config(state=tk.NORMAL)
@@ -700,9 +722,17 @@ class ChatClient:
             
             self.add_to_chat(f"✅ Connected to {self.server_ip}:{self.port}", "success")
             
-            # Request initial user lists
-            self.request_user_lists()
+            # Request initial user lists with delay
+            threading.Timer(1.0, self.request_user_lists).start()
             
+        except socket.timeout:
+            messagebox.showerror("Connection Error", "Connection timeout! Check server address and port.")
+            if self.client:
+                self.client.close()
+        except ConnectionRefusedError:
+            messagebox.showerror("Connection Error", "Connection refused! Is the server running?")
+            if self.client:
+                self.client.close()
         except Exception as e:
             messagebox.showerror("Connection Error", f"Failed to connect: {e}")
             if self.client:
@@ -714,24 +744,31 @@ class ChatClient:
             password = simpledialog.askstring("Server Password", 
                                             "Enter server password:", show='*')
             if not password:
+                self.client.close()
                 return False
                 
-            if len(password) <= 8:
+            # Fixed: Changed from 8 to 9 to match server requirement
+            if len(password) < 9:
                 messagebox.showwarning("Invalid Password", 
-                                     "Password must be at least 8 characters long!")
+                                     "Password must be at least 9 characters long!")
                 continue
             
-            self.client.send(f"{len(password):04}".encode('utf-8'))
-            self.client.send(password.encode('utf-8'))
-            
-            verify_len = int(self.client.recv(4).decode('utf-8'))
-            verify = self.client.recv(verify_len).decode('utf-8')
-            
-            if verify == 'access denied':
-                attempts += 1
-                messagebox.showerror("Access Denied", f"Wrong password! {3-attempts} attempts remaining")
-            else:
-                return True
+            try:
+                self.client.send(f"{len(password):04}".encode('utf-8'))
+                self.client.send(password.encode('utf-8'))
+                
+                verify_len = int(self.client.recv(4).decode('utf-8'))
+                verify = self.client.recv(verify_len).decode('utf-8')
+                
+                if verify == 'access denied':
+                    attempts += 1
+                    messagebox.showerror("Access Denied", f"Wrong password! {3-attempts} attempts remaining")
+                else:
+                    return True
+            except Exception as e:
+                messagebox.showerror("Authentication Error", f"Error during authentication: {e}")
+                self.client.close()
+                return False
         
         messagebox.showerror("Authentication Failed", "Too many failed attempts!")
         self.client.close()
@@ -757,47 +794,67 @@ class ChatClient:
                         if not admin_password:
                             break
                             
-                        if len(admin_password) <= 8:
+                        # Fixed: Changed from 8 to 9 to match server requirement
+                        if len(admin_password) < 9:
                             messagebox.showwarning("Invalid Password", 
-                                                 "Password must be at least 8 characters long!")
+                                                 "Password must be at least 9 characters long!")
                             continue
                         
-                        self.client.send(f"{len(admin_password):04}".encode('utf-8'))
-                        self.client.send(admin_password.encode('utf-8'))
-                        
-                        response_len = int(self.client.recv(4).decode('utf-8'))
-                        admin_response = self.client.recv(response_len).decode('utf-8')
-                        
-                        if admin_response == 'access denied':
-                            attempts += 1
-                            messagebox.showerror("Access Denied", f"Wrong admin password! {3-attempts} attempts remaining")
-                        else:
-                            self.is_admin = True
-                            self.add_to_chat("👑 Admin privileges granted!", "admin")
-                            self.admin_controls_frame.pack(fill=tk.X, pady=(10, 0))
-                            break
+                        try:
+                            self.client.send(f"{len(admin_password):04}".encode('utf-8'))
+                            self.client.send(admin_password.encode('utf-8'))
+                            
+                            response_len = int(self.client.recv(4).decode('utf-8'))
+                            admin_response = self.client.recv(response_len).decode('utf-8')
+                            
+                            if admin_response == 'access denied':
+                                attempts += 1
+                                messagebox.showerror("Access Denied", f"Wrong admin password! {3-attempts} attempts remaining")
+                            else:
+                                self.is_admin = True
+                                self.add_to_chat("👑 Admin privileges granted!", "admin")
+                                self.admin_controls_frame.pack(fill=tk.X, pady=(10, 0))
+                                # Update admin buttons in commands window if it exists
+                                if hasattr(self, 'admin_button_refs'):
+                                    for btn in self.admin_button_refs:
+                                        btn.config(state=tk.NORMAL)
+                                break
+                        except Exception as e:
+                            messagebox.showerror("Admin Auth Error", f"Error during admin authentication: {e}")
+                            self.client.close()
+                            return False
                     else:
                         messagebox.showerror("Authentication Failed", "Too many failed admin attempts!")
                         self.client.close()
                         return False
+            elif admin_verify == "Welcome to the Server!":
+                # Non-admin user, continue normally
+                pass
+                
         except Exception as e:
             self.add_to_chat(f"❌ Admin auth error: {e}", "error")
+            return False
         
         return True
     
     def request_user_lists(self):
         """Request updated user lists from server"""
         if self.connected:
-            # Request online users
-            threading.Thread(target=lambda: self.send_command(f"{self.client_prefix}online"), daemon=True).start()
-            time.sleep(0.1)
-            # Request admin list
-            threading.Thread(target=lambda: self.send_command(f"{self.client_prefix}adminlist"), daemon=True).start()
+            try:
+                # Request online users
+                self.send_raw_message(f"{self.client_prefix}online")
+                time.sleep(0.2)
+                # Request admin list
+                self.send_raw_message(f"{self.client_prefix}adminlist")
+            except Exception as e:
+                self.add_to_chat(f"❌ Error requesting user lists: {e}", "error")
     
     def disconnect_from_server(self):
         if self.connected:
             try:
+                self.receiving = False
                 self.send_raw_message(f"{self.client_prefix}exit")
+                time.sleep(0.1)  # Give time for exit message to send
                 self.client.close()
             except:
                 pass
@@ -815,6 +872,11 @@ class ChatClient:
             self.send_btn.config(state=tk.DISABLED)
             self.admin_controls_frame.pack_forget()
             
+            # Update admin buttons in commands window if it exists
+            if hasattr(self, 'admin_button_refs'):
+                for btn in self.admin_button_refs:
+                    btn.config(state=tk.DISABLED)
+            
             self.update_user_lists()
             self.update_user_info()
             self.add_to_chat("❌ Disconnected from server", "warning")
@@ -830,7 +892,7 @@ class ChatClient:
         try:
             self.send_raw_message(message)
             
-            # Add own message to chat with special formatting
+            # Add own message to chat with special formatting (only for non-commands)
             if not message.startswith(self.client_prefix):
                 self.add_to_chat(f"[{self.user_name}] {message}", "own")
             
@@ -844,94 +906,139 @@ class ChatClient:
             self.add_to_chat(f"❌ Error sending message: {e}", "error")
     
     def send_raw_message(self, message):
-        msg_bytes = message.encode('utf-8')
-        msg_length = len(msg_bytes)
-        length_header = str(msg_length).encode('utf-8')
-        length_header += b' ' * (64 - len(length_header))
-        
-        self.client.send(length_header)
-        self.client.send(msg_bytes)
+        if not self.connected or not self.client:
+            return
+            
+        try:
+            msg_bytes = message.encode('utf-8')
+            msg_length = len(msg_bytes)
+            length_header = str(msg_length).encode('utf-8')
+            length_header += b' ' * (64 - len(length_header))
+            
+            self.client.send(length_header)
+            self.client.send(msg_bytes)
+        except Exception as e:
+            self.add_to_chat(f"❌ Error sending raw message: {e}", "error")
     
     def receive_messages(self):
         try:
-            while self.connected:
-                message = self.client.recv(2048).decode('utf-8')
-                if message == "[200]Exit":
-                    self.add_to_chat("❌ Server disconnected", "warning")
-                    self.root.after(0, self.disconnect_from_server)
+            while self.connected and self.receiving:
+                try:
+                    message = self.client.recv(2048).decode('utf-8')
+                    if not message:
+                        break
+                        
+                    if message == "[200]Exit":
+                        self.add_to_chat("❌ Server disconnected", "warning")
+                        self.root.after(0, self.disconnect_from_server)
+                        break
+                    else:
+                        self.process_received_message(message)
+                        
+                except socket.timeout:
+                    continue
+                except ConnectionResetError:
+                    self.add_to_chat("🔒 Connection was reset by server", "error")
                     break
-                else:
-                    self.process_received_message(message)
+                except Exception as e:
+                    if self.connected:
+                        self.add_to_chat(f"🔒 Receive error: {e}", "error")
+                    break
                     
         except Exception as e:
             if self.connected:
                 self.add_to_chat(f"🔒 Connection lost: {e}", "error")
-                self.root.after(0, self.disconnect_from_server)
+                
+        # Cleanup on receive thread exit
+        if self.connected:
+            self.root.after(0, self.disconnect_from_server)
     
     def process_received_message(self, message):
         """Process and categorize received messages"""
         msg_type = "message"  # Default
         
         # Determine message type based on content
-        if "joined the chat" in message or "left the chat" in message:
+        if "joined the server" in message or "left the chat" in message:
             msg_type = "join_leave"
-        elif message.startswith("🟢") and "online:" in message:
+        elif message.startswith("🟢") and ("Users" in message or "Online" in message):
             msg_type = "system"
             self.parse_online_users(message)
-        elif message.startswith("👑") and ("Admin" in message or "administrator" in message):
+        elif message.startswith("👑") and ("Admin" in message or "administrator" in message or "[" in message):
             msg_type = "admin"
             self.parse_admin_users(message)
-        elif message.startswith("📢") or "ANNOUNCEMENT" in message.upper():
+        elif message.startswith("📢") or "ANNOUNCEMENT" in message.upper() or "Announcement" in message:
             msg_type = "announcement"
         elif message.startswith("⛔") or message.startswith("❌"):
             msg_type = "error"
-        elif message.startswith("✅") or message.startswith("🟢"):
+        elif message.startswith("✅") or (message.startswith("🟢") and "granted" in message):
             msg_type = "success"
         elif message.startswith("⚠️") or message.startswith("🔶"):
             msg_type = "warning"
-        elif "[PRIVATE]" in message or "[PM]" in message:
+        elif "[PRIVATE]" in message or "[PM]" in message or "[DM]" in message:
             msg_type = "private"
         elif message.startswith("🔹") or message.startswith("🔸"):
             msg_type = "system"
+        elif message.startswith("🔗") and "Server Address" in message:
+            msg_type = "system"
+        elif message.startswith("💠"):
+            msg_type = "message"
         
         self.add_to_chat(message, msg_type)
         
     def parse_online_users(self, message):
         """Parse online users from server message"""
         # Extract usernames from online message
-        # Format: "🟢 Users online: user1, user2, user3"
-        if "online:" in message:
-            users_part = message.split("online:", 1)[1].strip()
-            if users_part and users_part != "None":
-                self.online_users = [user.strip() for user in users_part.split(",")]
-            else:
-                self.online_users = []
+        # Format from server: "🟢 Online Users: 1" followed by "🔹 username:address"
+        if "🔹" in message:
+            # Extract username from format "🔹 username:address"
+            user_info = message.replace("🔹 ", "").strip()
+            if ":" in user_info:
+                username = user_info.split(":")[0]
+                if username not in self.online_users:
+                    self.online_users.append(username)
             self.root.after(0, self.update_user_lists)
             self.root.after(0, self.update_user_info)
+        elif "Online Users:" in message:
+            # Reset the list when we get the count message
+            self.online_users = []
     
     def parse_admin_users(self, message):
         """Parse admin users from server message"""
         # Extract admin usernames from admin list message
-        if "Administrators:" in message:
-            admin_part = message.split("Administrators:", 1)[1].strip()
-            if admin_part and admin_part != "None":
-                self.admin_users = [admin.strip() for admin in admin_part.split(",")]
-            else:
-                self.admin_users = []
+        # Format from server: "👑 [index] username:address"
+        if "👑" in message and "[" in message and "]" in message:
+            # Extract username from format "👑 [index] username:address"
+            parts = message.split("]", 1)
+            if len(parts) > 1:
+                user_info = parts[1].strip()
+                if ":" in user_info:
+                    username = user_info.split(":")[0]
+                    if username not in self.admin_users:
+                        self.admin_users.append(username)
             self.root.after(0, self.update_user_lists)
             self.root.after(0, self.update_user_info)
+        elif "No Admins are online" in message:
+            # Reset admin list if no admins online
+            self.admin_users = []
     
     def add_to_chat(self, message, msg_type="message"):
         timestamp = time.strftime("[%H:%M:%S]")
         
-        self.chat_display.config(state=tk.NORMAL)
+        def update_chat():
+            self.chat_display.config(state=tk.NORMAL)
+            
+            # Add message with appropriate tag
+            full_message = f"{timestamp} {message}\n"
+            self.chat_display.insert(tk.END, full_message, msg_type)
+            
+            self.chat_display.config(state=tk.DISABLED)
+            self.chat_display.see(tk.END)
         
-        # Add message with appropriate tag
-        full_message = f"{timestamp} {message}\n"
-        self.chat_display.insert(tk.END, full_message, msg_type)
-        
-        self.chat_display.config(state=tk.DISABLED)
-        self.chat_display.see(tk.END)
+        # Ensure GUI updates happen on main thread
+        if threading.current_thread() == threading.main_thread():
+            update_chat()
+        else:
+            self.root.after(0, update_chat)
     
     def run(self):
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
