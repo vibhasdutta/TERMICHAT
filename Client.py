@@ -1,4 +1,8 @@
-### Updated Client.py with Fixes ###
+# ─────────────────────────────────────────────
+# TermiChat Server — Version 1.0
+# Author: VibhasDutta
+# Date Updated: 2025-06-01
+# ─────────────────────────────────────────────
 import socket
 import json
 import threading
@@ -11,7 +15,15 @@ try:
     CLIENT_IP = data['SERVER_IP']
     UserName = data['USER_NAME']
     ClientPrefix = data['PREFIX']
+    print(r"""
+ _       __     __                             ______         ______                    _ ________          __ 
+| |     / /__  / /________  ____ ___  ___     /_  __/___     /_  __/__  _________ ___  (_) ____/ /_  ____ _/ /_
+| | /| / / _ \/ / ___/ __ \/ __ `__ \/ _ \     / / / __ \     / / / _ \/ ___/ __ `__ \/ / /   / __ \/ __ `/ __/
+| |/ |/ /  __/ / /__/ /_/ / / / / / /  __/    / / / /_/ /    / / /  __/ /  / / / / / / / /___/ / / / /_/ / /_  
+|__/|__/\___/_/\___/\____/_/ /_/ /_/\___/    /_/  \____/    /_/  \___/_/  /_/ /_/ /_/_/\____/_/ /_/\__,_/\__/  
 
+TermiChat Client — Version 1.0 | Author: VibhasDutta | Updated: 2025-06-01
+""")
     print(f"⚙️---CURRENT SETTINGS---⚙️\n🌐 SERVER IP: {CLIENT_IP}\n🔌 PORT: {PORT}\n👤 USER NAME: {UserName}\n🏷️ PREFIX: {ClientPrefix}\n\n")
 
     check = input("❓ Do you want to change the Settings? [Yes/No]: ")
@@ -62,8 +74,8 @@ try:
             exit()
 
         Server_password = input("🔒 Enter the Server Password: ")
-        if len(Server_password) <= 8:
-            print("❗ Password must be at least 8 characters long.\n")
+        if len(Server_password) < 9:
+            print("❗ Password must be at least 9 characters long.\n")
             continue
 
         client.send(f"{len(Server_password):04}".encode('utf-8'))
@@ -91,8 +103,8 @@ try:
             Admin_PASS_Try = 0
             while Admin_PASS_Try < 3:
                 AdminPassword = input("Enter the Admin Password: ")
-                if len(AdminPassword) <= 8:
-                    print("❗ Password must be at least 8 characters long.\n")
+                if len(AdminPassword) < 9:
+                    print("❗ Password must be at least 9 characters long.\n")
                     continue
 
                 client.send(f"{len(AdminPassword):04}".encode('utf-8'))
@@ -143,45 +155,77 @@ def receive():
 
 
 def main():
+    
     while True:
         try:
             message = input()
-            if message.startswith(f"{ClientPrefix}help"):
-                print(f"🟢 {ClientPrefix}online: Check online members\n👑 {ClientPrefix}adminlist: Show all Admins\n🚫 {ClientPrefix}ban: Ban Member (Admin only)\n✅ {ClientPrefix}unban: Unban Member (Admin only)\n📋 {ClientPrefix}banlist: Show Banned Members (Admin only)\n👢 {ClientPrefix}kick: Kick Member (Admin only)\n🌐 {ClientPrefix}serverinfo: Server info\n🚪 {ClientPrefix}exit: Exit chat\n")
+            cmd = message.strip().lower()
 
-            elif message.startswith(f"{ClientPrefix}exit"):
+            if cmd.startswith(f"{ClientPrefix}help"):
+                print(f"""
+🟢 {ClientPrefix}online: Check online members
+👑 {ClientPrefix}adminlist: Show all Admins
+🚫 {ClientPrefix}ban: Ban Member (Admin only)
+✅ {ClientPrefix}unban: Unban Member (Admin only)
+📋 {ClientPrefix}banlist: Show Banned Members (Admin only)
+🔇 {ClientPrefix}mute: Mute Member (Admin only)
+🔊 {ClientPrefix}unmute: Unmute Member (Admin only)
+📢 {ClientPrefix}announce: Server-wide message (Admin only)
+👢 {ClientPrefix}kick: Kick Member (Admin only)
+🌐 {ClientPrefix}serverinfo: Server info
+🚪 {ClientPrefix}exit: Exit chat
+""")
+
+            elif cmd.startswith(f"{ClientPrefix}exit"):
                 send(f"{ClientPrefix}exit")
                 break
-            elif message.startswith(f"{ClientPrefix}banlist"):
-                send(f"{ClientPrefix}banlist")
-            elif message.startswith(f"{ClientPrefix}unban"):
+
+            elif cmd in [f"{ClientPrefix}banlist", f"{ClientPrefix}adminlist",
+                         f"{ClientPrefix}serverinfo", f"{ClientPrefix}online"]:
+                send(message)
+
+            elif cmd.startswith(f"{ClientPrefix}unban"):
                 send(f"{ClientPrefix}unban")
-                index = input()
+                index = input("🔢 Enter index to unban: ")
                 client.send(f"{len(index):04}".encode('utf-8'))
                 client.send(index.encode('utf-8'))
-            elif message.startswith(f"{ClientPrefix}serverinfo"):
-                send(f"{ClientPrefix}serverinfo")
-            elif message.startswith(f"{ClientPrefix}kick"):
-                send(f"{ClientPrefix}kick")
-                index = input()
-                client.send(f"{len(index):04}".encode('utf-8'))
-                client.send(index.encode('utf-8'))
-            elif message.startswith(f"{ClientPrefix}ban") and not message.startswith(f"{ClientPrefix}unban"):
+
+            elif cmd.startswith(f"{ClientPrefix}ban") and not cmd.startswith(f"{ClientPrefix}unban"):
                 send(f"{ClientPrefix}ban")
-                index = input()
+                index = input("🔢 Enter index to ban: ")
                 client.send(f"{len(index):04}".encode('utf-8'))
                 client.send(index.encode('utf-8'))
-            elif message.startswith(f"{ClientPrefix}adminlist"):
-                send(f"{ClientPrefix}adminlist")
-            elif message.startswith(f"{ClientPrefix}shutdown"):
-                send(f"{ClientPrefix}shutdown")
+
+            elif cmd.startswith(f"{ClientPrefix}kick"):
+                send(f"{ClientPrefix}kick")
+                index = input("🔢 Enter index to kick: ")
+                client.send(f"{len(index):04}".encode('utf-8'))
+                client.send(index.encode('utf-8'))
+
+            elif cmd.startswith(f"{ClientPrefix}mute"):
+                send(f"{ClientPrefix}mute")
+                index = input("🔢 Enter index to mute: ")
+                client.send(f"{len(index):04}".encode('utf-8'))
+                client.send(index.encode('utf-8'))
+
+            elif cmd.startswith(f"{ClientPrefix}unmute"):
+                send(f"{ClientPrefix}unmute")
+                index = input("🔢 Enter index to unmute: ")
+                client.send(f"{len(index):04}".encode('utf-8'))
+                client.send(index.encode('utf-8'))
+
+            elif cmd.startswith(f"{ClientPrefix}announce"):
+                send(f"{ClientPrefix}announce")
+                announcement = input("📢 Enter announcement message: ")
+                client.send(f"{len(announcement):04}".encode('utf-8'))
+                client.send(announcement.encode('utf-8'))
+
             else:
                 send(message)
 
         except Exception as e:
             print(f"⚠️ Error: {e}\n")
             break
-
 
 try:
     threading.Thread(target=receive).start()

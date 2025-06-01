@@ -1,4 +1,8 @@
-### Updated Interface.py with Fixes ###
+# ─────────────────────────────────────────────
+# TermiChat Server — Version 1.0
+# Author: VibhasDutta
+# Date Updated: 2025-06-01
+# ─────────────────────────────────────────────
 import time
 import re
 import socket
@@ -30,6 +34,10 @@ def update_config(new_data):
 def client_run():
     base_dir = Path(__file__).resolve().parent
     clientpy_path = base_dir / 'Client.py'
+    os_name = platform.system()
+def client_run_gui():
+    base_dir = Path(__file__).resolve().parent
+    clientpy_path = base_dir / 'client_gui.py'
     os_name = platform.system()
 
     try:
@@ -89,11 +97,13 @@ if __name__ == '__main__':
 | | /| / / _ \/ / ___/ __ \/ __ `__ \/ _ \     / / / __ \     / / / _ \/ ___/ __ `__ \/ / /   / __ \/ __ `/ __/
 | |/ |/ /  __/ / /__/ /_/ / / / / / /  __/    / / / /_/ /    / / /  __/ /  / / / / / / / /___/ / / / /_/ / /_  
 |__/|__/\___/_/\___/\____/_/ /_/ /_/\___/    /_/  \____/    /_/  \___/_/  /_/ /_/ /_/_/\____/_/ /_/\__,_/\__/  
+
+TermiChat Client — Version 1.0 | Author: VibhasDutta | Updated: 2025-06-01
 """)
 
     try:
         while True:
-            print(f"{Prefix}start_server : 🌐 Start the Server\n{Prefix}start_client : 🖥️  Join Server\n{Prefix}exit : 🚪 Exit Menu\n")
+            print(f"{Prefix}start_server : 🌐 Start the Server\n{Prefix}start_client_cli \n{Prefix}start_client_gui: 🖥️ \n{Prefix}exit : 🚪 Exit Menu\n")
             choice = input("Enter your choice: ")
 
             if choice.startswith(f"{Prefix}start_server"):
@@ -106,11 +116,13 @@ if __name__ == '__main__':
                 start(server, ADDR, IP_Address, PORT)
                 break
 
-            elif choice.startswith(f"{Prefix}start_client"):
+            elif choice.startswith(f"{Prefix}start_client_cli"):
                 Input()
                 client_run()
                 break
-
+            elif choice.startswith(f"{Prefix}start_client_gui"):
+                client_run_gui()
+                break
             elif choice.startswith(f"{Prefix}exit"):
                 print("👋 Exiting...")
                 exit()

@@ -1,9 +1,15 @@
+# ─────────────────────────────────────────────
+# TermiChat Server — Version 1.0
+# Author: VibhasDutta
+# Date Updated: 2025-06-01
+# ─────────────────────────────────────────────
 import socket
 import json
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog, scrolledtext
 import time
+
 
 class ChatClient:
     def __init__(self):
@@ -13,6 +19,11 @@ class ChatClient:
         self.client_prefix = ""
         self.server_ip = ""
         self.port = 0
+        self.is_admin = False
+        self.online_users = []
+        self.admin_users = []
+        self.banned_users = []
+        self.muted_users = []
         
         # Initialize GUI
         self.setup_gui()
@@ -21,8 +32,8 @@ class ChatClient:
     def setup_gui(self):
         # Main window
         self.root = tk.Tk()
-        self.root.title("Chat Client")
-        self.root.geometry("800x600")
+        self.root.title("TERMICHAT - Advanced Chat Client")
+        self.root.geometry("1200x700")
         self.root.configure(bg='#2c3e50')
         
         # Style configuration
@@ -31,47 +42,145 @@ class ChatClient:
         style.configure('Custom.TFrame', background='#2c3e50')
         style.configure('Custom.TButton', background='#3498db', foreground='white')
         style.configure('Custom.TLabel', background='#2c3e50', foreground='white')
+        style.configure('Admin.TButton', background='#e74c3c', foreground='white')
+        style.configure('Success.TButton', background='#27ae60', foreground='white')
         
-        # Main frame
-        main_frame = ttk.Frame(self.root, style='Custom.TFrame')
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Main container
+        main_container = ttk.Frame(self.root, style='Custom.TFrame')
+        main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Connection status frame
-        status_frame = ttk.Frame(main_frame, style='Custom.TFrame')
-        status_frame.pack(fill=tk.X, pady=(0, 10))
+        # Create main layout - left panel and right chat area
+        self.setup_left_panel(main_container)
+        self.setup_right_panel(main_container)
+        
+    def setup_left_panel(self, parent):
+        # Left panel for user lists and controls
+        left_panel = ttk.Frame(parent, style='Custom.TFrame')
+        left_panel.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 10))
+        
+        # Connection status and controls
+        status_frame = ttk.Frame(left_panel, style='Custom.TFrame')
+        status_frame.pack(fill=tk.X, pady=(0, 15))
         
         self.status_label = ttk.Label(status_frame, text="🔴 Disconnected", 
-                                     style='Custom.TLabel', font=('Arial', 12, 'bold'))
-        self.status_label.pack(side=tk.LEFT)
+                                     style='Custom.TLabel', font=('Arial', 11, 'bold'))
+        self.status_label.pack(anchor=tk.W)
         
-        self.connect_btn = ttk.Button(status_frame, text="🔗 Connect", 
+        buttons_frame = ttk.Frame(status_frame, style='Custom.TFrame')
+        buttons_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        self.connect_btn = ttk.Button(buttons_frame, text="🔗 Connect", 
                                      command=self.connect_to_server, style='Custom.TButton')
-        self.connect_btn.pack(side=tk.RIGHT)
+        self.connect_btn.pack(fill=tk.X, pady=1)
         
-        self.settings_btn = ttk.Button(status_frame, text="⚙️ Settings", 
+        self.settings_btn = ttk.Button(buttons_frame, text="⚙️ Settings", 
                                       command=self.show_settings, style='Custom.TButton')
-        self.settings_btn.pack(side=tk.RIGHT, padx=(0, 5))
+        self.settings_btn.pack(fill=tk.X, pady=1)
         
-        self.commands_btn = ttk.Button(status_frame, text="📋 Commands", 
+        self.commands_btn = ttk.Button(buttons_frame, text="📋 Commands", 
                                       command=self.show_commands_window, style='Custom.TButton')
-        self.commands_btn.pack(side=tk.RIGHT, padx=(0, 5))
+        self.commands_btn.pack(fill=tk.X, pady=1)
+        
+        # Online Users Section
+        users_frame = ttk.Frame(left_panel, style='Custom.TFrame')
+        users_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        
+        ttk.Label(users_frame, text="👥 Online Users", 
+                 style='Custom.TLabel', font=('Arial', 12, 'bold')).pack(anchor=tk.W)
+        
+        # Users listbox with scrollbar
+        users_list_frame = ttk.Frame(users_frame, style='Custom.TFrame')
+        users_list_frame.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
+        
+        self.users_listbox = tk.Listbox(
+            users_list_frame, 
+            bg='#34495e', 
+            fg='white', 
+            font=('Consolas', 9),
+            selectbackground='#3498db',
+            height=10,
+            width=25
+        )
+        
+        users_scrollbar = ttk.Scrollbar(users_list_frame, orient=tk.VERTICAL, command=self.users_listbox.yview)
+        self.users_listbox.configure(yscrollcommand=users_scrollbar.set)
+        
+        self.users_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        users_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # User action buttons (for admins)
+        self.admin_controls_frame = ttk.Frame(users_frame, style='Custom.TFrame')
+        self.admin_controls_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        # Quick admin actions
+        admin_row1 = ttk.Frame(self.admin_controls_frame, style='Custom.TFrame')
+        admin_row1.pack(fill=tk.X, pady=1)
+        
+        self.kick_btn = ttk.Button(admin_row1, text="👢 Kick", 
+                                  command=self.quick_kick, style='Admin.TButton')
+        self.kick_btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 2))
+        
+        self.ban_btn = ttk.Button(admin_row1, text="🚫 Ban", 
+                                 command=self.quick_ban, style='Admin.TButton')
+        self.ban_btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(2, 0))
+        
+        admin_row2 = ttk.Frame(self.admin_controls_frame, style='Custom.TFrame')
+        admin_row2.pack(fill=tk.X, pady=1)
+        
+        self.mute_btn = ttk.Button(admin_row2, text="🔇 Mute", 
+                                  command=self.quick_mute, style='Admin.TButton')
+        self.mute_btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 2))
+        
+        self.unmute_btn = ttk.Button(admin_row2, text="🔊 Unmute", 
+                                    command=self.quick_unmute, style='Success.TButton')
+        self.unmute_btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(2, 0))
+        
+        # Initially hide admin controls
+        self.admin_controls_frame.pack_forget()
+        
+        # User info section
+        info_frame = ttk.Frame(left_panel, style='Custom.TFrame')
+        info_frame.pack(fill=tk.X)
+        
+        ttk.Label(info_frame, text="ℹ️ User Info", 
+                 style='Custom.TLabel', font=('Arial', 10, 'bold')).pack(anchor=tk.W)
+        
+        self.user_info_text = tk.Text(
+            info_frame, 
+            height=6, 
+            width=25, 
+            bg='#34495e', 
+            fg='white', 
+            font=('Consolas', 8),
+            state=tk.DISABLED,
+            wrap=tk.WORD
+        )
+        self.user_info_text.pack(fill=tk.X, pady=(5, 0))
+        
+    def setup_right_panel(self, parent):
+        # Right panel for chat
+        right_panel = ttk.Frame(parent, style='Custom.TFrame')
+        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
         # Chat display area
-        chat_frame = ttk.Frame(main_frame, style='Custom.TFrame')
+        chat_frame = ttk.Frame(right_panel, style='Custom.TFrame')
         chat_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
         
         ttk.Label(chat_frame, text="💬 Chat Messages", 
-                 style='Custom.TLabel', font=('Arial', 10, 'bold')).pack(anchor=tk.W)
+                 style='Custom.TLabel', font=('Arial', 12, 'bold')).pack(anchor=tk.W)
         
         self.chat_display = scrolledtext.ScrolledText(
-            chat_frame, height=20, width=80, 
+            chat_frame, height=30, width=70, 
             bg='#34495e', fg='white', font=('Consolas', 10),
             state=tk.DISABLED, wrap=tk.WORD
         )
         self.chat_display.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
         
+        # Configure message type tags
+        self.setup_message_tags()
+        
         # Message input frame
-        input_frame = ttk.Frame(main_frame, style='Custom.TFrame')
+        input_frame = ttk.Frame(right_panel, style='Custom.TFrame')
         input_frame.pack(fill=tk.X)
         
         ttk.Label(input_frame, text="✉️ Message:", 
@@ -95,6 +204,137 @@ class ChatClient:
         self.message_entry.config(state=tk.DISABLED)
         self.send_btn.config(state=tk.DISABLED)
         
+    def setup_message_tags(self):
+        """Configure text tags for different message types with colors"""
+        # System messages (blue)
+        self.chat_display.tag_configure("system", foreground="#3498db", font=('Consolas', 10, 'bold'))
+        
+        # Error messages (red)
+        self.chat_display.tag_configure("error", foreground="#e74c3c", font=('Consolas', 10, 'bold'))
+        
+        # Success messages (green)
+        self.chat_display.tag_configure("success", foreground="#27ae60", font=('Consolas', 10, 'bold'))
+        
+        # Admin messages (purple)
+        self.chat_display.tag_configure("admin", foreground="#9b59b6", font=('Consolas', 10, 'bold'))
+        
+        # Warning messages (orange)
+        self.chat_display.tag_configure("warning", foreground="#f39c12", font=('Consolas', 10, 'bold'))
+        
+        # Private messages (cyan)
+        self.chat_display.tag_configure("private", foreground="#1abc9c", font=('Consolas', 10, 'italic'))
+        
+        # Own messages (light blue)
+        self.chat_display.tag_configure("own", foreground="#85c1e9")
+        
+        # Server announcements (yellow)
+        self.chat_display.tag_configure("announcement", foreground="#f1c40f", font=('Consolas', 10, 'bold'))
+        
+        # Join/Leave messages (gray)
+        self.chat_display.tag_configure("join_leave", foreground="#95a5a6", font=('Consolas', 9, 'italic'))
+        
+    def update_user_lists(self):
+        """Update the user list display"""
+        self.users_listbox.delete(0, tk.END)
+        
+        # Add online users with status indicators
+        for user in self.online_users:
+            status_icon = "👑" if user in self.admin_users else "👤"
+            mute_icon = "🔇" if user in self.muted_users else ""
+            ban_icon = "🚫" if user in self.banned_users else ""
+            
+            display_name = f"{status_icon} {user} {mute_icon}{ban_icon}"
+            self.users_listbox.insert(tk.END, display_name)
+            
+            # Color coding
+            if user in self.admin_users:
+                self.users_listbox.itemconfig(tk.END, {'fg': '#e74c3c'})  # Red for admins
+            elif user in self.muted_users:
+                self.users_listbox.itemconfig(tk.END, {'fg': '#f39c12'})  # Orange for muted
+                
+    def update_user_info(self):
+        """Update the user info panel"""
+        self.user_info_text.config(state=tk.NORMAL)
+        self.user_info_text.delete(1.0, tk.END)
+        
+        info_text = f"👤 Username: {self.user_name}\n"
+        info_text += f"🏷️ Prefix: {self.client_prefix}\n"
+        info_text += f"👑 Admin: {'Yes' if self.is_admin else 'No'}\n"
+        info_text += f"🟢 Online: {len(self.online_users)}\n"
+        info_text += f"👑 Admins: {len(self.admin_users)}\n"
+        
+        if self.is_admin:
+            info_text += f"🚫 Banned: {len(self.banned_users)}\n"
+            info_text += f"🔇 Muted: {len(self.muted_users)}\n"
+            
+        self.user_info_text.insert(1.0, info_text)
+        self.user_info_text.config(state=tk.DISABLED)
+        
+    def get_selected_user(self):
+        """Get the currently selected user from the list"""
+        selection = self.users_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("No Selection", "Please select a user from the list!")
+            return None
+            
+        selected_item = self.users_listbox.get(selection[0])
+        # Extract username from display format "👑 username 🔇🚫"
+        username = selected_item.split()[1] if len(selected_item.split()) > 1 else selected_item
+        return username
+        
+    def quick_kick(self):
+        user = self.get_selected_user()
+        if user and user != self.user_name:
+            if messagebox.askyesno("Confirm Kick", f"Kick user '{user}'?"):
+                # Find user index in online list
+                try:
+                    index = self.online_users.index(user)
+                    self.send_command(f"{self.client_prefix}kick")
+                    threading.Thread(target=lambda: self.send_followup_data(str(index + 1)), daemon=True).start()
+                except ValueError:
+                    messagebox.showerror("Error", "User not found in online list!")
+        elif user == self.user_name:
+            messagebox.showwarning("Invalid Action", "You cannot kick yourself!")
+            
+    def quick_ban(self):
+        user = self.get_selected_user()
+        if user and user != self.user_name:
+            if messagebox.askyesno("Confirm Ban", f"Ban user '{user}'?"):
+                try:
+                    index = self.online_users.index(user)
+                    self.send_command(f"{self.client_prefix}ban")
+                    threading.Thread(target=lambda: self.send_followup_data(str(index + 1)), daemon=True).start()
+                except ValueError:
+                    messagebox.showerror("Error", "User not found in online list!")
+        elif user == self.user_name:
+            messagebox.showwarning("Invalid Action", "You cannot ban yourself!")
+            
+    def quick_mute(self):
+        user = self.get_selected_user()
+        if user and user != self.user_name:
+            if messagebox.askyesno("Confirm Mute", f"Mute user '{user}'?"):
+                try:
+                    index = self.online_users.index(user)
+                    self.send_command(f"{self.client_prefix}mute")
+                    threading.Thread(target=lambda: self.send_followup_data(str(index + 1)), daemon=True).start()
+                except ValueError:
+                    messagebox.showerror("Error", "User not found in online list!")
+        elif user == self.user_name:
+            messagebox.showwarning("Invalid Action", "You cannot mute yourself!")
+            
+    def quick_unmute(self):
+        user = self.get_selected_user()
+        if user and user in self.muted_users:
+            if messagebox.askyesno("Confirm Unmute", f"Unmute user '{user}'?"):
+                try:
+                    index = self.muted_users.index(user)
+                    self.send_command(f"{self.client_prefix}unmute")
+                    threading.Thread(target=lambda: self.send_followup_data(str(index + 1)), daemon=True).start()
+                except ValueError:
+                    messagebox.showerror("Error", "User not found in muted list!")
+        elif user not in self.muted_users:
+            messagebox.showwarning("Invalid Action", "User is not muted!")
+            
     def load_config(self):
         try:
             with open('config.json', 'r') as f:
@@ -106,7 +346,15 @@ class ChatClient:
             self.client_prefix = data.get('PREFIX', '!')
             
             self.add_to_chat(f"⚙️ Configuration loaded:\n🌐 Server: {self.server_ip}:{self.port}\n👤 Username: {self.user_name}\n🏷️ Prefix: {self.client_prefix}\n", "system")
-            
+            self.add_to_chat(r"""
+            _       __     __                             ______         ______                    _ ________          __ 
+            | |     / /__  / /________  ____ ___  ___     /_  __/___     /_  __/__  _________ ___  (_) ____/ /_  ____ _/ /_
+            | | /| / / _ \/ / ___/ __ \/ __ `__ \/ _ \     / / / __ \     / / / _ \/ ___/ __ `__ \/ / /   / __ \/ __ `/ __/
+            | |/ |/ /  __/ / /__/ /_/ / / / / / /  __/    / / / /_/ /    / / /  __/ /  / / / / / / / /___/ / / / /_/ / /_  
+            |__/|__/\___/_/\___/\____/_/ /_/ /_/\___/    /_/  \____/    /_/  \___/_/  /_/ /_/ /_/_/\____/_/ /_/\__,_/\__/  
+
+            TermiChat Client — Version 1.0 | Author: VibhasDutta | Updated: 2025-06-01
+            """)
         except FileNotFoundError:
             self.create_default_config()
         except Exception as e:
@@ -186,7 +434,8 @@ class ChatClient:
                 self.user_name = new_config['USER_NAME']
                 self.client_prefix = new_config['PREFIX']
                 
-                self.add_to_chat("✅ Settings saved successfully!", "system")
+                self.add_to_chat("✅ Settings saved successfully!", "success")
+                self.update_user_info()
                 settings_window.destroy()
                 
             except ValueError:
@@ -204,7 +453,7 @@ class ChatClient:
             
         self.commands_window = tk.Toplevel(self.root)
         self.commands_window.title("📋 Chat Commands")
-        self.commands_window.geometry("500x600")
+        self.commands_window.geometry("600x700")
         self.commands_window.configure(bg='#2c3e50')
         
         # Commands frame
@@ -215,7 +464,7 @@ class ChatClient:
                  style='Custom.TLabel', font=('Arial', 14, 'bold')).pack(pady=(0, 15))
         
         commands_text = scrolledtext.ScrolledText(
-            frame, height=25, width=60,
+            frame, height=25, width=70,
             bg='#34495e', fg='white', font=('Consolas', 10),
             state=tk.DISABLED, wrap=tk.WORD
         )
@@ -243,6 +492,17 @@ class ChatClient:
 👢 {self.client_prefix}kick
    └ Kick a member (Admin only)
    └ You'll be prompted for the member index
+
+🔇 {self.client_prefix}mute
+   └ Mute a member (Admin only)
+   └ You'll be prompted for the member index
+
+🔊 {self.client_prefix}unmute
+   └ Unmute a member (Admin only)
+   └ You'll be prompted for the member index
+
+📢 {self.client_prefix}announce
+   └ Send server announcement (Admin only)
 
 🌐 {self.client_prefix}serverinfo
    └ Display server information
@@ -280,34 +540,38 @@ class ChatClient:
         ttk.Button(row1, text="🌐 Server Info", 
                   command=lambda: self.send_command(f"{self.client_prefix}serverinfo")).pack(side=tk.LEFT, padx=2)
         
-        # Row 2
-        row2 = ttk.Frame(buttons_frame, style='Custom.TFrame')
-        row2.pack(fill=tk.X, pady=2)
-        
-        ttk.Button(row2, text="🚫 Ban", 
-                  command=lambda: self.admin_action("ban")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(row2, text="✅ Unban", 
-                  command=lambda: self.admin_action("unban")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(row2, text="👢 Kick", 
-                  command=lambda: self.admin_action("kick")).pack(side=tk.LEFT, padx=2)
-        
-        # Row 3 
-        row4 = ttk.Frame(buttons_frame, style='Custom.TFrame')
-        row4.pack(fill=tk.X, pady=2)
+        # Row 2 - Admin commands
+        if self.is_admin:
+            row2 = ttk.Frame(buttons_frame, style='Custom.TFrame')
+            row2.pack(fill=tk.X, pady=2)
+            
+            ttk.Button(row2, text="🚫 Ban", 
+                      command=lambda: self.admin_action("ban")).pack(side=tk.LEFT, padx=2)
+            ttk.Button(row2, text="✅ Unban", 
+                      command=lambda: self.admin_action("unban")).pack(side=tk.LEFT, padx=2)
+            ttk.Button(row2, text="👢 Kick", 
+                      command=lambda: self.admin_action("kick")).pack(side=tk.LEFT, padx=2)
+            
+            # Row 3 
+            row3 = ttk.Frame(buttons_frame, style='Custom.TFrame')
+            row3.pack(fill=tk.X, pady=2)
 
-        ttk.Button(row4, text="🔇 Mute", command=lambda: self.admin_action("mute")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(row4, text="🔊 Unmute", command=lambda: self.admin_action("unmute")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(row4, text="📢 Announce", command=self.announce_message).pack(side=tk.LEFT, padx=2)
+            ttk.Button(row3, text="🔇 Mute", command=lambda: self.admin_action("mute")).pack(side=tk.LEFT, padx=2)
+            ttk.Button(row3, text="🔊 Unmute", command=lambda: self.admin_action("unmute")).pack(side=tk.LEFT, padx=2)
+            ttk.Button(row3, text="📢 Announce", command=self.announce_message).pack(side=tk.LEFT, padx=2)
+            
+            # Row 4
+            row4 = ttk.Frame(buttons_frame, style='Custom.TFrame')
+            row4.pack(fill=tk.X, pady=2)
+            
+            ttk.Button(row4, text="📋 Ban List", 
+                      command=lambda: self.send_command(f"{self.client_prefix}banlist")).pack(side=tk.LEFT, padx=2)
         
-        # Row 4
-        row3 = ttk.Frame(buttons_frame, style='Custom.TFrame')
-        row3.pack(fill=tk.X, pady=2)
-        
-        ttk.Button(row3, text="📋 Ban List", 
-                  command=lambda: self.send_command(f"{self.client_prefix}banlist")).pack(side=tk.LEFT, padx=2)
-        ttk.Button(row3, text="🚪 Exit", 
+        # Exit button
+        row_exit = ttk.Frame(buttons_frame, style='Custom.TFrame')
+        row_exit.pack(fill=tk.X, pady=2)
+        ttk.Button(row_exit, text="🚪 Exit", 
                   command=self.disconnect_from_server).pack(side=tk.LEFT, padx=2)
-
 
     def announce_message(self):
         if not self.connected:
@@ -324,10 +588,10 @@ class ChatClient:
             return
 
         self.send_command(f"{self.client_prefix}{action}")
-        self.chat_display.insert(tk.END, f"⌛ Waiting for server to send list...\n")
+        self.add_to_chat(f"⌛ Waiting for server to send list...", "warning")
         threading.Thread(target=lambda: self.handle_admin_target_selection(action), daemon=True).start()
 
-    def handle_admin_target_selection(self,action):
+    def handle_admin_target_selection(self, action):
         try:
             time.sleep(0.2)
             self.client.settimeout(2.0)
@@ -421,7 +685,10 @@ class ChatClient:
             # Start receiving messages
             threading.Thread(target=self.receive_messages, daemon=True).start()
             
-            self.add_to_chat(f"✅ Connected to {self.server_ip}:{self.port}", "system")
+            self.add_to_chat(f"✅ Connected to {self.server_ip}:{self.port}", "success")
+            
+            # Request initial user lists
+            self.request_user_lists()
             
         except Exception as e:
             messagebox.showerror("Connection Error", f"Failed to connect: {e}")
@@ -492,7 +759,9 @@ class ChatClient:
                             attempts += 1
                             messagebox.showerror("Access Denied", f"Wrong admin password! {3-attempts} attempts remaining")
                         else:
-                            self.add_to_chat("👑 Admin privileges granted!", "system")
+                            self.is_admin = True
+                            self.add_to_chat("👑 Admin privileges granted!", "admin")
+                            self.admin_controls_frame.pack(fill=tk.X, pady=(10, 0))
                             break
                     else:
                         messagebox.showerror("Authentication Failed", "Too many failed admin attempts!")
@@ -503,6 +772,15 @@ class ChatClient:
         
         return True
     
+    def request_user_lists(self):
+        """Request updated user lists from server"""
+        if self.connected:
+            # Request online users
+            threading.Thread(target=lambda: self.send_command(f"{self.client_prefix}online"), daemon=True).start()
+            time.sleep(0.1)
+            # Request admin list
+            threading.Thread(target=lambda: self.send_command(f"{self.client_prefix}adminlist"), daemon=True).start()
+    
     def disconnect_from_server(self):
         if self.connected:
             try:
@@ -512,11 +790,21 @@ class ChatClient:
                 pass
             
             self.connected = False
+            self.is_admin = False
+            self.online_users = []
+            self.admin_users = []
+            self.banned_users = []
+            self.muted_users = []
+            
             self.status_label.config(text="🔴 Disconnected")
             self.connect_btn.config(text="🔗 Connect", command=self.connect_to_server)
             self.message_entry.config(state=tk.DISABLED)
             self.send_btn.config(state=tk.DISABLED)
-            self.add_to_chat("❌ Disconnected from server", "system")
+            self.admin_controls_frame.pack_forget()
+            
+            self.update_user_lists()
+            self.update_user_info()
+            self.add_to_chat("❌ Disconnected from server", "warning")
     
     def send_message(self, event=None):
         if not self.connected:
@@ -528,6 +816,11 @@ class ChatClient:
         
         try:
             self.send_raw_message(message)
+            
+            # Add own message to chat with special formatting
+            if not message.startswith(self.client_prefix):
+                self.add_to_chat(f"[{self.user_name}] {message}", "own")
+            
             self.message_entry.delete(0, tk.END)
             
             # Handle exit command
@@ -551,38 +844,85 @@ class ChatClient:
             while self.connected:
                 message = self.client.recv(2048).decode('utf-8')
                 if message == "[200]Exit":
-                    self.add_to_chat("❌ Server disconnected", "system")
+                    self.add_to_chat("❌ Server disconnected", "warning")
                     self.root.after(0, self.disconnect_from_server)
                     break
                 else:
-                    self.add_to_chat(message, "message")
+                    self.process_received_message(message)
                     
         except Exception as e:
             if self.connected:
                 self.add_to_chat(f"🔒 Connection lost: {e}", "error")
                 self.root.after(0, self.disconnect_from_server)
     
+    def process_received_message(self, message):
+        """Process and categorize received messages"""
+        msg_type = "message"  # Default
+        
+        # Determine message type based on content
+        if "joined the chat" in message or "left the chat" in message:
+            msg_type = "join_leave"
+        elif message.startswith("🟢") and "online:" in message:
+            msg_type = "system"
+            self.parse_online_users(message)
+        elif message.startswith("👑") and ("Admin" in message or "administrator" in message):
+            msg_type = "admin"
+            self.parse_admin_users(message)
+        elif message.startswith("📢") or "ANNOUNCEMENT" in message.upper():
+            msg_type = "announcement"
+        elif message.startswith("⛔") or message.startswith("❌"):
+            msg_type = "error"
+        elif message.startswith("✅") or message.startswith("🟢"):
+            msg_type = "success"
+        elif message.startswith("⚠️") or message.startswith("🔶"):
+            msg_type = "warning"
+        elif "[PRIVATE]" in message or "[PM]" in message:
+            msg_type = "private"
+        elif message.startswith("🔹") or message.startswith("🔸"):
+            msg_type = "system"
+        
+        self.add_to_chat(message, msg_type)
+        
+    def parse_online_users(self, message):
+        """Parse online users from server message"""
+        # Extract usernames from online message
+        # Format: "🟢 Users online: user1, user2, user3"
+        if "online:" in message:
+            users_part = message.split("online:", 1)[1].strip()
+            if users_part and users_part != "None":
+                self.online_users = [user.strip() for user in users_part.split(",")]
+            else:
+                self.online_users = []
+            self.root.after(0, self.update_user_lists)
+            self.root.after(0, self.update_user_info)
+    
+    def parse_admin_users(self, message):
+        """Parse admin users from server message"""
+        # Extract admin usernames from admin list message
+        if "Administrators:" in message:
+            admin_part = message.split("Administrators:", 1)[1].strip()
+            if admin_part and admin_part != "None":
+                self.admin_users = [admin.strip() for admin in admin_part.split(",")]
+            else:
+                self.admin_users = []
+            self.root.after(0, self.update_user_lists)
+            self.root.after(0, self.update_user_info)
+    
     def add_to_chat(self, message, msg_type="message"):
         timestamp = time.strftime("[%H:%M:%S]")
         
         self.chat_display.config(state=tk.NORMAL)
         
-        if msg_type == "system":
-            self.chat_display.insert(tk.END, f"{timestamp} {message}\n", "system")
-        elif msg_type == "error":
-            self.chat_display.insert(tk.END, f"{timestamp} {message}\n", "error")
-        else:
-            self.chat_display.insert(tk.END, f"{timestamp} {message}\n")
-        
-        # Configure text tags for different message types
-        self.chat_display.tag_configure("system", foreground="#3498db")
-        self.chat_display.tag_configure("error", foreground="#e74c3c")
+        # Add message with appropriate tag
+        full_message = f"{timestamp} {message}\n"
+        self.chat_display.insert(tk.END, full_message, msg_type)
         
         self.chat_display.config(state=tk.DISABLED)
         self.chat_display.see(tk.END)
     
     def run(self):
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.update_user_info()
         self.root.mainloop()
     
     def on_closing(self):

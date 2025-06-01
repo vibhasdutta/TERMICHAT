@@ -1,4 +1,8 @@
-### Updated Server.py with Fixes ###
+# ─────────────────────────────────────────────
+# TermiChat Server — Version 1.0
+# Author: VibhasDutta
+# Date Updated: 2025-06-01
+# ─────────────────────────────────────────────
 import threading
 import datetime
 import socket
@@ -8,15 +12,31 @@ UserNames = {}
 Bans = set()
 Admins = set()
 
+Muted = set()  # For muted users
+MessageQueue = []  # For scheduled messages: list of tuples (send_time, target_conn, message)
+
+def send_private_message(sender_conn, recipient_username, message, timestamp):
+    for conn, full_username in UserNames.items():
+        if full_username.split(':')[0] == recipient_username:
+            conn.send(f"[DM][{timestamp.strftime('%I:%M %p')}][{UserNames[sender_conn]}] {message}".encode('utf-8'))
+            sender_conn.send(f"[DM to {recipient_username}] {message}".encode('utf-8'))
+            return
+    sender_conn.send("⚠️ User not found.".encode('utf-8'))
+
 def broadcast(message):
     for client in Clients:
         try:
             client.send(message.encode('utf-8'))
         except:
-            continue
+            Clients.pop(client, None)
+            UserNames.pop(client, None)
+            if client in Admins:
+                Admins.remove(client)
 
 def handle_admin_command(command, connection, timestamp):
     try:
+        admin_username = UserNames.get(connection, None)
+
         if command == "unban":
             if not Bans:
                 connection.send("⛔ No clients are banned.".encode('utf-8'))
@@ -27,7 +47,13 @@ def handle_admin_command(command, connection, timestamp):
                 connection.send("Enter index to unban: ".encode('utf-8'))
                 index_length = int(connection.recv(4).decode('utf-8'))
                 index = int(connection.recv(index_length).decode('utf-8'))
+                if index < 0 or index >= len(banned_users):
+                    connection.send("❌ Invalid index.".encode('utf-8'))
+                    return
                 unbanned_user = banned_users[index]
+                if unbanned_user == admin_username:
+                    connection.send("⚠️ You cannot unban yourself.".encode('utf-8'))
+                    return
                 Bans.remove(unbanned_user)
                 broadcast(f"🔓 [{timestamp.strftime('%I:%M %p')}] {unbanned_user} has been unbanned.")
 
@@ -39,32 +65,83 @@ def handle_admin_command(command, connection, timestamp):
                     connection.send(f"🔸 {user}".encode('utf-8'))
 
         elif command == "ban":
-            users = list(UserNames.values())
-            for i, name in enumerate(users):
+            users = [(conn, name) for conn, name in UserNames.items() if conn != connection and conn not in Admins]
+            if not users:
+                connection.send("⚠️ No users to ban (cannot ban yourself or other admins).".encode('utf-8'))
+                return
+            for i, (conn, name) in enumerate(users):
                 connection.send(f"🔹[{i}] {name}".encode('utf-8'))
             connection.send("Enter index to ban: ".encode('utf-8'))
             index_length = int(connection.recv(4).decode('utf-8'))
             index = int(connection.recv(index_length).decode('utf-8'))
-            target_conn = list(UserNames.keys())[index]
-            banned_user = UserNames[target_conn]
+            if index < 0 or index >= len(users):
+                connection.send("❌ Invalid index.".encode('utf-8'))
+                return
+            target_conn, banned_user = users[index]
             Bans.add(banned_user)
             target_conn.close()
             broadcast(f"🚫 [{timestamp.strftime('%I:%M %p')}] {banned_user} has been banned.")
 
         elif command == "kick":
-            users = list(UserNames.values())
-            for i, name in enumerate(users):
+            users = [(conn, name) for conn, name in UserNames.items() if conn != connection and conn not in Admins]
+            if not users:
+                connection.send("⚠️ No users to kick (cannot kick yourself or other admins).".encode('utf-8'))
+                return
+            for i, (conn, name) in enumerate(users):
                 connection.send(f"🔹[{i}] {name}".encode('utf-8'))
             connection.send("Enter index to kick: ".encode('utf-8'))
             index_length = int(connection.recv(4).decode('utf-8'))
             index = int(connection.recv(index_length).decode('utf-8'))
-            kicked_conn = list(UserNames.keys())[index]
-            kicked_user = UserNames[kicked_conn]
+            if index < 0 or index >= len(users):
+                connection.send("❌ Invalid index.".encode('utf-8'))
+                return
+            kicked_conn, kicked_user = users[index]
             kicked_conn.close()
             broadcast(f"👢 [{timestamp.strftime('%I:%M %p')}] {kicked_user} has been kicked.")
 
+        elif command == "mute":
+            users = [(conn, name) for conn, name in UserNames.items() if conn != connection and conn not in Admins]
+            if not users:
+                connection.send("⚠️ No users to mute (cannot mute yourself or other admins).".encode('utf-8'))
+                return
+            for i, (conn, name) in enumerate(users):
+                connection.send(f"🔹[{i}] {name}".encode('utf-8'))
+            connection.send("Enter index to mute: ".encode('utf-8'))
+            index_length = int(connection.recv(4).decode('utf-8'))
+            index = int(connection.recv(index_length).decode('utf-8'))
+            if index < 0 or index >= len(users):
+                connection.send("❌ Invalid index.".encode('utf-8'))
+                return
+            target_conn, muted_user = users[index]
+            Muted.add(target_conn)
+            broadcast(f"🔇 [{timestamp.strftime('%I:%M %p')}] {muted_user} has been muted.")
+
+        elif command == "unmute":
+            if not Muted:
+                connection.send("⛔ No users are muted.".encode('utf-8'))
+                return
+            muted_list = [(conn, UserNames[conn]) for conn in Muted]
+            for i, (_, name) in enumerate(muted_list):
+                connection.send(f"🔸[{i}] {name}".encode('utf-8'))
+            connection.send("Enter index to unmute: ".encode('utf-8'))
+            index_length = int(connection.recv(4).decode('utf-8'))
+            index = int(connection.recv(index_length).decode('utf-8'))
+            if index < 0 or index >= len(muted_list):
+                connection.send("❌ Invalid index.".encode('utf-8'))
+                return
+            unmute_conn, unmute_user = muted_list[index]
+            Muted.remove(unmute_conn)
+            broadcast(f"🔊 [{timestamp.strftime('%I:%M %p')}] {unmute_user} has been unmuted.")
+
+        elif command == "announce":
+            connection.send("Enter announcement message: ".encode('utf-8'))
+            msg_len = int(connection.recv(4).decode('utf-8'))
+            message = connection.recv(msg_len).decode('utf-8')
+            broadcast(f"📢 [Announcement {timestamp.strftime('%I:%M %p')}] {message}")
+
     except Exception as e:
         connection.send(f"⚠️ Error: {e}".encode('utf-8'))
+
 
 def handle_client(conn, addr, ADDR, server_pass, admin_pass):
     try:
@@ -176,7 +253,15 @@ def handle_client(conn, addr, ADDR, server_pass, admin_pass):
                         conn.send(f"🔹 {user}".encode('utf-8'))
             else:
                 print(f"💠 [{timestamp.strftime('%I:%M %p')}][{full_username}] | {msg}")
-                broadcast(f"💠 [{timestamp.strftime('%I:%M %p')}][{full_username}] | {msg}")
+                for client in Clients:
+                    if client != conn:  # Don't send message back to the sender
+                        try:
+                            client.send(f"💠 [{timestamp.strftime('%I:%M %p')}][{full_username}] | {msg}".encode('utf-8'))
+                        except:
+                            Clients.pop(client, None)
+                            UserNames.pop(client, None)
+                            if client in Admins:
+                                Admins.remove(client)
 
     except Exception as e:
         print(f"❌ Disconnected: {addr}, Error: {e}")
@@ -190,9 +275,20 @@ def handle_client(conn, addr, ADDR, server_pass, admin_pass):
         conn.close()
 
 def start(server, ADDR, IP, PORT):
-    server_pass = input("🔒 Enter server password: ")
-    admin_pass = input("👑 Enter admin password: ")
-
+    while True:
+        server_pass = input("🔒 Enter server password: ")
+        if len(server_pass) < 9:
+            print("❗ Password must be at least 9 characters long.\n")
+            continue
+        else:
+            break
+    while True:
+        admin_pass = input("👑 Enter admin password: ")
+        if len(admin_pass) < 9:
+            print("❗ Password must be at least 9 characters long.\n")
+            continue
+        else:
+            break
     print(f"🕒 Server starting on {IP}:{PORT}...")
     server.listen()
     print(f"🔊 Listening on {IP}:{PORT}")
