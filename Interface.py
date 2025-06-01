@@ -1,12 +1,11 @@
+### Updated Interface.py with Fixes ###
 import time
 import re
-from Server import start
 import socket
 import json
 import subprocess
 import platform
 from pathlib import Path
-import ssl
 
 
 def is_valid_ip(ip):
@@ -16,103 +15,108 @@ def is_valid_ip(ip):
     return False
 
 
+def update_config(new_data):
+    try:
+        with open('config.json', 'r') as f:
+            data = json.load(f)
+    except:
+        data = {}
+
+    data.update(new_data)
+    with open('config.json', 'w') as f:
+        json.dump(data, f, indent=4)
+
+
 def client_run():
-    # Get the base directory of the script
     base_dir = Path(__file__).resolve().parent
-    # Define the Client.py path
     clientpy_path = base_dir / 'Client.py'
-    
-    # Determine the operating system
     os_name = platform.system()
 
     try:
         if os_name == "Windows":
             subprocess.Popen(['start', 'cmd.exe', '/k', 'python', str(clientpy_path)], shell=True)
-        elif os_name == 'Darwin':  # macOS
+        elif os_name == 'Darwin':
             script = f"""
-            tell application "Terminal"
-                do script "cd {base_dir} && python3 {clientpy_path}"
+            tell application \"Terminal\"
+                do script \"cd {base_dir} && python3 {clientpy_path}\"
             end tell
             """
             subprocess.Popen(['osascript', '-e', script])
-        elif os_name == 'Linux':  # Linux (including Linux Mint)
+        elif os_name == 'Linux':
             subprocess.Popen(['gnome-terminal', '--', 'bash', '-c', f'python3 {clientpy_path}'])
         else:
-            raise OSError(f"Unsupported operating system: {os_name}")
+            raise OSError(f"Unsupported OS: {os_name}")
     except Exception as e:
-        print(f"⚠️ An error occurred:{e}")
+        print(f"⚠️ Error launching client: {e}")
 
 
 def Input():
     while True:
-        try:
-            IP_Address = input("🌐 Enter the Server IP: ")
-            if is_valid_ip(IP_Address):
-                with open('config.json', 'w') as f:
-                    data['SERVER_IP'] = IP_Address
-                    json.dump(data, f)
-                break
-            else:
-                print("❌ Invalid IP address. Please enter a valid IP address.")
-        except ValueError:
-            print("❌ Invalid IP address. Please enter a valid IP address.")
+        IP_Address = input("🌐 Enter the Server IP: ")
+        if is_valid_ip(IP_Address):
+            break
+        else:
+            print("❌ Invalid IP. Try again.")
+
     while True:
         try:
             PORT = int(input("🔌 Enter the Server PORT: "))
             if 1 <= PORT <= 65535:
-                with open('config.json', 'w') as f:
-                    data['PORT'] = PORT
-                    json.dump(data, f)
                 break
             else:
-                print("❌ Invalid port. Please enter a number between 1 and 65535.")
+                print("❌ Port must be between 1 and 65535.")
         except ValueError:
-            print("❌ Invalid port. Please enter a valid number.")
+            print("❌ Invalid input. Port must be a number.")
+
+    update_config({"SERVER_IP": IP_Address, "PORT": PORT})
     return IP_Address, PORT
 
 
 if __name__ == '__main__':
-    
-    with open('config.json') as f:
-        data = json.load(f)
+    try:
+        with open('config.json') as f:
+            data = json.load(f)
+    except:
+        data = {"PREFIX": "!", "PORT": 8080, "SERVER_IP": "127.0.0.1"}
 
-    Prefix = data['PREFIX']
-    PORT = data['PORT']
-    IP_Address = data['SERVER_IP']
+    Prefix = data.get('PREFIX', '!')
+    PORT = data.get('PORT', 8080)
+    IP_Address = data.get('SERVER_IP', '127.0.0.1')
 
-    print("\n---🍁 WELCOME TO TERMICHAT 🍁 ---\n") 
+    print(r"""
+ _       __     __                             ______         ______                    _ ________          __ 
+| |     / /__  / /________  ____ ___  ___     /_  __/___     /_  __/__  _________ ___  (_) ____/ /_  ____ _/ /_
+| | /| / / _ \/ / ___/ __ \/ __ `__ \/ _ \     / / / __ \     / / / _ \/ ___/ __ `__ \/ / /   / __ \/ __ `/ __/
+| |/ |/ /  __/ / /__/ /_/ / / / / / /  __/    / / / /_/ /    / / /  __/ /  / / / / / / / /___/ / / / /_/ / /_  
+|__/|__/\___/_/\___/\____/_/ /_/ /_/\___/    /_/  \____/    /_/  \___/_/  /_/ /_/ /_/_/\____/_/ /_/\__,_/\__/  
+""")
 
     try:
         while True:
-            print(f"{Prefix}start_server : 🌐 to start the Server\n{Prefix}start_client : 🖥️  to join server\n{Prefix}exit : 🚪 to exit the menu\n")
+            print(f"{Prefix}start_server : 🌐 Start the Server\n{Prefix}start_client : 🖥️  Join Server\n{Prefix}exit : 🚪 Exit Menu\n")
             choice = input("Enter your choice: ")
-            
-            if all (character in choice for character in [Prefix, 'start_server']):
-                
+
+            if choice.startswith(f"{Prefix}start_server"):
                 IP_Address, PORT = Input()
                 ADDR = (IP_Address, PORT)
                 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                # # SSL context
-                # context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-                # context.load_cert_chain(certfile='server.crt', keyfile='server.key')
-                
-                # # Wrap socket
-                # server = context.wrap_socket(server, server_side=True)
-                
                 server.bind(ADDR)
+
+                from Server import start
                 start(server, ADDR, IP_Address, PORT)
-                time.sleep(2)
-                break;
-            
-            elif all (character in choice for character in [Prefix, 'start_client']):
+                break
+
+            elif choice.startswith(f"{Prefix}start_client"):
                 Input()
                 client_run()
-                break;
-            elif all (character in choice for character in [Prefix, 'exit']):
+                break
+
+            elif choice.startswith(f"{Prefix}exit"):
                 print("👋 Exiting...")
                 exit()
+
             else:
-                print("⚠️ Invalid Input!")
-        
+                print("⚠️ Invalid input. Try again.")
+
     except KeyboardInterrupt:
         print("👋 Exiting...")

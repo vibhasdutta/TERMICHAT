@@ -1,279 +1,203 @@
+### Updated Server.py with Fixes ###
 import threading
 import datetime
 import socket
 
-Clients = []
-UserNames = []
-Bans = []
-Admin = []
+Clients = {}
+UserNames = {}
+Bans = set()
+Admins = set()
 
 def broadcast(message):
     for client in Clients:
-        client.send(f"{message}".encode('utf-8'))
-
-def handle_admin_command(command,connection,x):
-
-    if command.startswith("unban"):
-        if len(Bans) == 0:
-            connection.send("⛔ No clients are banned.".encode('utf-8'))
-        else:
-            for ban in Bans:
-                index = Bans.index(ban)
-                connection.send(f"🔸[{index}][{UserNames[index]}]".encode('utf-8'))
-            try:
-                connection.send("Enter the index of the client you want to unban or Press Enter to Exit".encode('utf-8'))
-                try:
-                    UnbanIndex_length = int(connection.recv(4).decode('utf-8'))
-                    UnbanIndex = int(connection.recv(UnbanIndex_length).decode('utf-8'))
-                except ValueError:
-                    print("Invalid Input❗")
-                
-                UnbanClient = Bans[UnbanIndex]
-                Bans.remove(UnbanClient)
-                print(f"🔓 [{x.strftime('%I:%M %p')}][{UserNames[UnbanIndex]}] has been unbanned.")
-                broadcast(f"🔓 [{x.strftime('%I:%M %p')}][{UserNames[UnbanIndex]}] has been unbanned.")
-            except Exception as e:
-                print(f"⚠️ [ERROR] : {e}".encode('utf-8'))
-    
-    elif command.startswith("banlist"):
-        if len(Bans) == 0:
-            connection.send("⛔ No clients are banned.".encode('utf-8'))
-        else:    
-            for ban in Bans:
-                index = Bans.index(ban)
-                connection.send(f"🔸[{index}][{UserNames[index]}]".encode('utf-8'))
-    
-    elif command.startswith("ban"):
-        for client in Clients:
-            index = Clients.index(client)
-            connection.send(f"🔹[{index}][{UserNames[index]}]".encode('utf-8'))
         try:
-            connection.send("Enter the index of the client you want to ban or Press Enter to Exit".encode('utf-8'))
-            try:
-                BanIndex_length = int(connection.recv(4).decode('utf-8'))
-                BanIndex = int(connection.recv(BanIndex_length).decode('utf-8'))
-            except ValueError:
-                print("Invalid Input❗")
-                
-            BanClient = Clients[BanIndex]
-            BanClient.close()
-            print(f"🚫 [{x.strftime('%I:%M %p')}][{UserNames[BanIndex]}] has been banned.")
-            broadcast(f"🚫 [{x.strftime('%I:%M %p')}][{UserNames[BanIndex]}] has been banned.")
-            Bans.append(Clients[BanIndex])
-        except Exception as e:
-            print(f"⚠️ [ERROR] : {e}".encode('utf-8'))
-    
-    elif command.startswith("kick"):
-        for client in Clients:
-            index = Clients.index(client)
-            connection.send(f"🔹{index} : {UserNames[index]}".encode('utf-8'))
-        try:
-            connection.send("Enter the index of the client you want to kick or Press Enter to Exit ".encode('utf-8'))
-            try:
-                KickIndex_length = int(connection.recv(4).decode('utf-8'))
-                KickIndex = int(connection.recv(KickIndex_length).decode('utf-8'))
-                KickClient = Clients[KickIndex]
-                KickClient.close()
-            except ValueError:
-                print("Invalid Input❗")
-                
-            print(f"👢 [{x.strftime('%I:%M %p')}][{UserNames[KickIndex]}] has been kicked.")
-            broadcast(f"👢 [{x.strftime('%I:%M %p')}][{UserNames[KickIndex]}] has been kicked.")
-        except Exception as e:
-            connection.send(f"⚠️ [ERROR] : {e}".encode('utf-8'))
+            client.send(message.encode('utf-8'))
+        except:
+            continue
 
-
-def handle_client(connection, addr, ADDR, SERVER_PASSWORD, ADMIN_PASSWORD, UserName, ClientPrefix):
-    
+def handle_admin_command(command, connection, timestamp):
     try:
-        x = datetime.datetime.now()
+        if command == "unban":
+            if not Bans:
+                connection.send("⛔ No clients are banned.".encode('utf-8'))
+            else:
+                banned_users = list(Bans)
+                for i, user in enumerate(banned_users):
+                    connection.send(f"🔸[{i}] {user}".encode('utf-8'))
+                connection.send("Enter index to unban: ".encode('utf-8'))
+                index_length = int(connection.recv(4).decode('utf-8'))
+                index = int(connection.recv(index_length).decode('utf-8'))
+                unbanned_user = banned_users[index]
+                Bans.remove(unbanned_user)
+                broadcast(f"🔓 [{timestamp.strftime('%I:%M %p')}] {unbanned_user} has been unbanned.")
 
-        if connection in Bans:
-            BanText = "you are banned"
-            connection.send(f"{len(BanText):04}".encode('utf-8'))
-            connection.send(BanText.encode('utf-8'))
-            print(f"🚫 [{x.strftime('%I:%M %p')}][{UserName}:{addr}] was trying to connect to the server[{ADDR}] but is banned!")
-            UserNames.remove(f"{UserName}:{addr}")
-            Clients.remove(connection)
-            connection.close()
+        elif command == "banlist":
+            if not Bans:
+                connection.send("⛔ No clients are banned.".encode('utf-8'))
+            else:
+                for user in Bans:
+                    connection.send(f"🔸 {user}".encode('utf-8'))
+
+        elif command == "ban":
+            users = list(UserNames.values())
+            for i, name in enumerate(users):
+                connection.send(f"🔹[{i}] {name}".encode('utf-8'))
+            connection.send("Enter index to ban: ".encode('utf-8'))
+            index_length = int(connection.recv(4).decode('utf-8'))
+            index = int(connection.recv(index_length).decode('utf-8'))
+            target_conn = list(UserNames.keys())[index]
+            banned_user = UserNames[target_conn]
+            Bans.add(banned_user)
+            target_conn.close()
+            broadcast(f"🚫 [{timestamp.strftime('%I:%M %p')}] {banned_user} has been banned.")
+
+        elif command == "kick":
+            users = list(UserNames.values())
+            for i, name in enumerate(users):
+                connection.send(f"🔹[{i}] {name}".encode('utf-8'))
+            connection.send("Enter index to kick: ".encode('utf-8'))
+            index_length = int(connection.recv(4).decode('utf-8'))
+            index = int(connection.recv(index_length).decode('utf-8'))
+            kicked_conn = list(UserNames.keys())[index]
+            kicked_user = UserNames[kicked_conn]
+            kicked_conn.close()
+            broadcast(f"👢 [{timestamp.strftime('%I:%M %p')}] {kicked_user} has been kicked.")
+
+    except Exception as e:
+        connection.send(f"⚠️ Error: {e}".encode('utf-8'))
+
+def handle_client(conn, addr, ADDR, server_pass, admin_pass):
+    try:
+        username_length = int(conn.recv(4).decode('utf-8'))
+        username = conn.recv(username_length).decode('utf-8')
+
+        prefix_length = int(conn.recv(4).decode('utf-8'))
+        prefix = conn.recv(prefix_length).decode('utf-8')
+
+        full_username = f"{username}:{addr}"
+
+        if full_username in Bans:
+            msg = "you are banned"
+            conn.send(f"{len(msg):04}".encode('utf-8'))
+            conn.send(msg.encode('utf-8'))
+            conn.close()
             return
-        else:
-            BanText = "you are not banned"
-            connection.send(f"{len(BanText):04}".encode('utf-8'))
-            connection.send(BanText.encode('utf-8'))
+
+        msg = "you are not banned"
+        conn.send(f"{len(msg):04}".encode('utf-8'))
+        conn.send(msg.encode('utf-8'))
 
         while True:
-            
-            password_length = int(connection.recv(4).decode('utf-8'))
-            password = connection.recv(password_length).decode('utf-8')
-            
-            if password != SERVER_PASSWORD:
-                Invatext = "access denied"
-                connection.send(f"{len(Invatext):04}".encode('utf-8'))
-                connection.send(Invatext.encode('utf-8'))
-                print(f"❌ [{x.strftime('%I:%M %p')}][{UserName}:{addr}] was trying to connect to the server[{ADDR}] but access denied!")
-
-            elif password == 'Too many attempts!':
-                UserNames.remove(f"{UserName}:{addr}")
-                print(f"❌ [{x.strftime('%I:%M %p')}][{UserName}:{addr}] was trying to connect to the server[{ADDR}] but too many attempts!")
-                Clients.remove(connection)
-                connection.close()
+            pw_len = int(conn.recv(4).decode('utf-8'))
+            password = conn.recv(pw_len).decode('utf-8')
+            if password == 'Too many attempts!':
+                conn.close()
+                return
+            elif password != server_pass:
+                msg = "access denied"
+                conn.send(f"{len(msg):04}".encode('utf-8'))
+                conn.send(msg.encode('utf-8'))
             else:
-                acctext = "access granted"
-                connection.send(f"{len(acctext):04}".encode('utf-8'))
-                connection.send(acctext.encode('utf-8'))
+                msg = "access granted"
+                conn.send(f"{len(msg):04}".encode('utf-8'))
+                conn.send(msg.encode('utf-8'))
                 break
 
-        AdminVerify = "admin?"
-        connection.send(f"{len(AdminVerify):04}".encode('utf-8'))
-        connection.send(AdminVerify.encode('utf-8'))
-        while True:
-            AdminVerify = connection.recv(4).decode('utf-8')
-            AdminVerify = connection.recv(int(AdminVerify)).decode('utf-8')
+        msg = "admin?"
+        conn.send(f"{len(msg):04}".encode('utf-8'))
+        conn.send(msg.encode('utf-8'))
 
-            if AdminVerify.lower() == 'yes':
-                while True:
-                    AdminPassword_length = int(connection.recv(4).decode('utf-8'))
-                    AdminPassword = connection.recv(AdminPassword_length).decode('utf-8')
-                    if AdminPassword == ADMIN_PASSWORD:
-                        AdminVerify = "access granted"
-                        connection.send(f"{len(AdminVerify):04}".encode('utf-8'))
-                        connection.send(AdminVerify.encode('utf-8'))
-                        connection.send("Welcome 👑 Admin!".encode('utf-8'))
-                        print(f"👑 [{x.strftime('%I:%M %p')}][{UserName}:{addr}] Join as Admin!")
-                        Admin.append(connection)
-                        break
-                    elif AdminPassword != ADMIN_PASSWORD:
-                        AdminVerify = "access denied"
-                        connection.send(f"{len(AdminVerify):04}".encode('utf-8'))
-                        connection.send(AdminVerify.encode('utf-8'))
-                        print(f"❌ [{x.strftime('%I:%M %p')}][{UserName}:{addr}] was trying to connect to the server[{ADDR}] but access denied!")
-                    elif AdminPassword == 'Too many attempts!':
-                        UserNames.remove(f"{UserName}:{addr}")
-                        print(f"❌ [{x.strftime('%I:%M %p')}][{UserName}:{addr}] was trying to connect to the server as Admin [{ADDR}] but too many attempts!")
-                        Clients.remove(connection)
-                        connection.close()
-                break
-            elif AdminVerify.lower() == 'no':
-                connection.send("Welcome to the Server!".encode('utf-8'))
-                break
-            else:
-                pass
-    except Exception as e:
-        print(f"⚠️ [ERROR] : {e}")
-        return 
-    print(f"🔗 [{x.strftime('%I:%M %p')}][{UserName}:{addr}] Connected to the Server[{ADDR}]!")
-    broadcast(f"🔗 [{x.strftime('%I:%M %p')}][{UserName}:{addr}] Connected to the Server[{ADDR}]!")
+        is_admin = conn.recv(int(conn.recv(4).decode('utf-8'))).decode('utf-8')
 
-    connected = True
-    
-    while connected:
-        x = datetime.datetime.now()
-        try:
-            message_length = connection.recv(64).decode('utf-8')
-            if message_length:
-                
-                try:
-                    message_length = int(message_length)
-                except ValueError:
-                    print(f"Invalid message length received: {message_length}")
+        if is_admin.lower() == 'yes':
+            attempts = 0
+            while attempts < 3:
+                pw_len = int(conn.recv(4).decode('utf-8'))
+                admin_pw = conn.recv(pw_len).decode('utf-8')
+                if admin_pw == admin_pass:
+                    msg = "access granted"
+                    conn.send(f"{len(msg):04}".encode('utf-8'))
+                    conn.send(msg.encode('utf-8'))
+                    Admins.add(conn)
                     break
-                
-                message = connection.recv(message_length).decode('utf-8')
-
-                if message.startswith(ClientPrefix):
-                    command = message[1:]
-                    if command.split()[0] in ["ban", "unban", "banlist", "kick", "shutdown"]:
-                        if connection in Admin:
-                            handle_admin_command(command,connection,x)
-                        else:
-                            connection.send("🔒You do not have permission to execute this command.".encode('utf-8'))
-                            print(f"🔒 [{x.strftime('%I:%M %p')}][{UserName}:{addr}] tried to execute an {message} command.")
-                    
-                    elif command.startswith("serverinfo"):
-                        connection.send(f"🔗 [SERVER INFO] : {ADDR}".encode('utf-8'))
-                        connection.send(f"🟢 [ONLINE USERS] : {threading.active_count()-1}".encode('utf-8'))
-                        connection.send(f"👑 [ADMINS ONLINE] : {len(Admin)}".encode('utf-8'))
-                    
-                    elif command.startswith("adminlist"):
-                        if len(Admin) == 0:
-                            connection.send("⛔ No Admins are online.".encode('utf-8'))
-                        else:
-                            for admin in Admin:
-                                index = Admin.index(admin)
-                                connection.send(f"👑 [{index}][{UserNames[index]}]".encode('utf-8'))
-                    
-                    elif all(character in message for character in [ClientPrefix, 'exit']):
-                        connected = False
-                        connection.send(f"[200]Exit".encode('utf-8'))
-                        print(f"🔴 [{x.strftime('%I:%M %p')}][{UserName}:{addr}] Disconnected from the Server[{ADDR}]!")
-                        broadcast(f"🔴 [{x.strftime('%I:%M %p')}][{UserName}:{addr}] Disconnected from the Server[{ADDR}]!")
-
-                    elif all(character in message for character in [ClientPrefix, 'online']):
-                        connection.send(f"🟢 [ONLINE USERS] : {threading.active_count()-1}".encode('utf-8'))
-                        for i in UserNames:
-                            connection.send(f"🔹[{i}]".encode('utf-8'))
                 else:
-                    print(f"💠 [{x.strftime('%I:%M %p')}:{UserName}] | {message}")
-                    broadcast(f"💠 [{x.strftime('%I:%M %p')}:{UserName}] | {message}")
+                    attempts += 1
+                    msg = "access denied"
+                    conn.send(f"{len(msg):04}".encode('utf-8'))
+                    conn.send(msg.encode('utf-8'))
+            if attempts == 3:
+                conn.close()
+                return
+        else:
+            conn.send("Welcome to the Server!".encode('utf-8'))
 
-                    # connection.send(f"Sent:{message}".encode('utf-8'))  #USER CAN SEE THE MESSAGE SENT BY HIM/HER
-        
-        except Exception as e:
-            print(f"❌[{x.strftime('%I:%M %p')}][{UserName}:{addr}] Disconnected from the Server[{ADDR}]!")
-            print(f"⚠️ [ERROR] : {e}")
-            break
-    try:
-        if len(Admin) != 0:
-            if connection in Admin:
-                Admin.remove(connection)
-        for client in Clients:
-            if client == connection:
-                index = Clients.index(client)
-                UserNames.remove(f"{UserName}:{addr}")
-                Clients.remove(connection)
-                connection.close()
+        Clients[conn] = username
+        UserNames[conn] = full_username
+
+        timestamp = datetime.datetime.now()
+        print(f"🔗 [{timestamp.strftime('%I:%M %p')}][{full_username}] connected.")
+        broadcast(f"🔗 [{timestamp.strftime('%I:%M %p')}][{full_username}] joined the server.")
+
+        while True:
+            msg_len = conn.recv(64).decode('utf-8')
+            if not msg_len:
                 break
-        connection.close()
+
+            try:
+                msg_len = int(msg_len.strip())
+                msg = conn.recv(msg_len).decode('utf-8')
+            except:
+                break
+
+            timestamp = datetime.datetime.now()
+            if msg.startswith(prefix):
+                command = msg[len(prefix):].strip().split()[0]
+                if command in ["ban", "unban", "banlist", "kick"]:
+                    if conn in Admins:
+                        handle_admin_command(command, conn, timestamp)
+                    else:
+                        conn.send("🔒 You do not have permission to run this command.".encode('utf-8'))
+                elif command == "serverinfo":
+                    conn.send(f"🔗 Server Address: {ADDR}".encode('utf-8'))
+                    conn.send(f"🟢 Online Users: {len(Clients)}".encode('utf-8'))
+                    conn.send(f"👑 Admins Online: {len(Admins)}".encode('utf-8'))
+                elif command == "adminlist":
+                    if not Admins:
+                        conn.send("⛔ No Admins are online.".encode('utf-8'))
+                    else:
+                        for i, admin_conn in enumerate(Admins):
+                            conn.send(f"👑 [{i}] {UserNames[admin_conn]}".encode('utf-8'))
+                elif command == "exit":
+                    conn.send("[200]Exit".encode('utf-8'))
+                    break
+                elif command == "online":
+                    conn.send(f"🟢 Online Users: {len(Clients)}".encode('utf-8'))
+                    for user in UserNames.values():
+                        conn.send(f"🔹 {user}".encode('utf-8'))
+            else:
+                print(f"💠 [{timestamp.strftime('%I:%M %p')}][{full_username}] | {msg}")
+                broadcast(f"💠 [{timestamp.strftime('%I:%M %p')}][{full_username}] | {msg}")
+
     except Exception as e:
-        print(f"⚠️ [handle_client:ERROR] : {e}")
+        print(f"❌ Disconnected: {addr}, Error: {e}")
+    finally:
+        if conn in Admins:
+            Admins.remove(conn)
+        if conn in Clients:
+            Clients.pop(conn)
+        if conn in UserNames:
+            UserNames.pop(conn)
+        conn.close()
 
-def start(server, ADDR, Ip_Address, PORT):
+def start(server, ADDR, IP, PORT):
+    server_pass = input("🔒 Enter server password: ")
+    admin_pass = input("👑 Enter admin password: ")
 
-    while True:
-        SERVER_PASSWORD = input("🔒 Enter the server password: ")
-        if len(SERVER_PASSWORD) <= 8:
-            print("Password must be at least 8 characters long.")
-        else:
-            break
-
-    while True:
-        ADMIN_PASSWORD = input("👑 Enter the admin password: ")
-        if len(ADMIN_PASSWORD) <= 8:
-            print("Password must be at least 8 characters long.")
-        else:
-            break
-
-    x = datetime.datetime.now()
-    print(f"🕒 [TIME:{x.strftime('%I:%M %p')}][STARTING] Server is starting at {Ip_Address}:{PORT}")
+    print(f"🕒 Server starting on {IP}:{PORT}...")
     server.listen()
-    print(f"🔊 [LISTENING] Server is Online and listening! on {Ip_Address}")
-    
-    from Interface import client_run
-    client_run()
+    print(f"🔊 Listening on {IP}:{PORT}")
 
     while True:
-        connection, addr = server.accept()
-
-        username_length = int(connection.recv(4).decode('utf-8'))
-        UserName = connection.recv(username_length).decode('utf-8')
-        UserNames.append(f"{UserName}:{addr}")
-
-        prefix_length = int(connection.recv(4).decode('utf-8'))
-        ClientPrefix = connection.recv(prefix_length).decode('utf-8')
-    
-        Clients.append(connection)
-        
-        thread = threading.Thread(target=handle_client, args=(connection, addr, ADDR, SERVER_PASSWORD, ADMIN_PASSWORD, UserName, ClientPrefix))
+        conn, addr = server.accept()
+        thread = threading.Thread(target=handle_client, args=(conn, addr, ADDR, server_pass, admin_pass))
         thread.start()
-        # print(f"[ONlINE CONNECTION] : {threading.active_count()-1}")
