@@ -540,38 +540,51 @@ class ChatClient:
         ttk.Button(row1, text="🌐 Server Info", 
                   command=lambda: self.send_command(f"{self.client_prefix}serverinfo")).pack(side=tk.LEFT, padx=2)
         
-        # Row 2 - Admin commands
-        if self.is_admin:
-            row2 = ttk.Frame(buttons_frame, style='Custom.TFrame')
-            row2.pack(fill=tk.X, pady=2)
-            
-            ttk.Button(row2, text="🚫 Ban", 
-                      command=lambda: self.admin_action("ban")).pack(side=tk.LEFT, padx=2)
-            ttk.Button(row2, text="✅ Unban", 
-                      command=lambda: self.admin_action("unban")).pack(side=tk.LEFT, padx=2)
-            ttk.Button(row2, text="👢 Kick", 
-                      command=lambda: self.admin_action("kick")).pack(side=tk.LEFT, padx=2)
-            
-            # Row 3 
-            row3 = ttk.Frame(buttons_frame, style='Custom.TFrame')
-            row3.pack(fill=tk.X, pady=2)
+        self.admin_button_refs = []  # Store button references to enable/disable later
 
-            ttk.Button(row3, text="🔇 Mute", command=lambda: self.admin_action("mute")).pack(side=tk.LEFT, padx=2)
-            ttk.Button(row3, text="🔊 Unmute", command=lambda: self.admin_action("unmute")).pack(side=tk.LEFT, padx=2)
-            ttk.Button(row3, text="📢 Announce", command=self.announce_message).pack(side=tk.LEFT, padx=2)
-            
-            # Row 4
-            row4 = ttk.Frame(buttons_frame, style='Custom.TFrame')
-            row4.pack(fill=tk.X, pady=2)
-            
-            ttk.Button(row4, text="📋 Ban List", 
-                      command=lambda: self.send_command(f"{self.client_prefix}banlist")).pack(side=tk.LEFT, padx=2)
-        
-        # Exit button
-        row_exit = ttk.Frame(buttons_frame, style='Custom.TFrame')
-        row_exit.pack(fill=tk.X, pady=2)
-        ttk.Button(row_exit, text="🚪 Exit", 
-                  command=self.disconnect_from_server).pack(side=tk.LEFT, padx=2)
+        # Row 2: Ban, Unban, Kick
+        row2 = ttk.Frame(buttons_frame, style='Custom.TFrame')
+        row2.pack(fill=tk.X, pady=2)
+
+        btn_ban = ttk.Button(row2, text="🚫 Ban", command=lambda: self.admin_action("ban"))
+        btn_ban.pack(side=tk.LEFT, padx=2)
+        self.admin_button_refs.append(btn_ban)
+
+        btn_unban = ttk.Button(row2, text="✅ Unban", command=lambda: self.admin_action("unban"))
+        btn_unban.pack(side=tk.LEFT, padx=2)
+        self.admin_button_refs.append(btn_unban)
+
+        btn_kick = ttk.Button(row2, text="👢 Kick", command=lambda: self.admin_action("kick"))
+        btn_kick.pack(side=tk.LEFT, padx=2)
+        self.admin_button_refs.append(btn_kick)
+
+        # Row 3: Mute, Unmute, Announce
+        row3 = ttk.Frame(buttons_frame, style='Custom.TFrame')
+        row3.pack(fill=tk.X, pady=2)
+
+        btn_mute = ttk.Button(row3, text="🔇 Mute", command=lambda: self.admin_action("mute"))
+        btn_mute.pack(side=tk.LEFT, padx=2)
+        self.admin_button_refs.append(btn_mute)
+
+        btn_unmute = ttk.Button(row3, text="🔊 Unmute", command=lambda: self.admin_action("unmute"))
+        btn_unmute.pack(side=tk.LEFT, padx=2)
+        self.admin_button_refs.append(btn_unmute)
+
+        btn_announce = ttk.Button(row3, text="📢 Announce", command=self.announce_message)
+        btn_announce.pack(side=tk.LEFT, padx=2)
+        self.admin_button_refs.append(btn_announce)
+
+        # Row 4: Banlist
+        row4 = ttk.Frame(buttons_frame, style='Custom.TFrame')
+        row4.pack(fill=tk.X, pady=2)
+
+        btn_banlist = ttk.Button(row4, text="📋 Ban List", command=lambda: self.send_command(f"{self.client_prefix}banlist"))
+        btn_banlist.pack(side=tk.LEFT, padx=2)
+        self.admin_button_refs.append(btn_banlist)
+
+        # Set all admin buttons enabled or disabled based on permission
+        for btn in self.admin_button_refs:
+            btn.config(state=tk.NORMAL if self.is_admin else tk.DISABLED)
 
     def announce_message(self):
         if not self.connected:
