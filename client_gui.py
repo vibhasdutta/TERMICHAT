@@ -16,7 +16,6 @@ class ChatClient:
         self.client = None
         self.connected = False
         self.user_name = ""
-        self.client_prefix = ""
         self.server_ip = ""
         self.port = 0
         self.is_admin = False
@@ -198,8 +197,7 @@ class ChatClient:
                 # Find user index in online list
                 try:
                     index = self.online_users.index(user)
-                    self.send_command(f"{self.client_prefix}kick")
-                    threading.Thread(target=lambda: self.send_followup_data(str(index)), daemon=True).start()
+                    self.send_admin_command("kick", str(index))
                 except ValueError:
                     messagebox.showerror("Error", "User not found in online list!")
         elif user == self.user_name:
@@ -211,8 +209,7 @@ class ChatClient:
             if messagebox.askyesno("Confirm Ban", f"Ban user '{user}'?"):
                 try:
                     index = self.online_users.index(user)
-                    self.send_command(f"{self.client_prefix}ban")
-                    threading.Thread(target=lambda: self.send_followup_data(str(index)), daemon=True).start()
+                    self.send_admin_command("ban", str(index))
                 except ValueError:
                     messagebox.showerror("Error", "User not found in online list!")
         elif user == self.user_name:
@@ -224,8 +221,7 @@ class ChatClient:
             if messagebox.askyesno("Confirm Mute", f"Mute user '{user}'?"):
                 try:
                     index = self.online_users.index(user)
-                    self.send_command(f"{self.client_prefix}mute")
-                    threading.Thread(target=lambda: self.send_followup_data(str(index)), daemon=True).start()
+                    self.send_admin_command("mute", str(index))
                 except ValueError:
                     messagebox.showerror("Error", "User not found in online list!")
         elif user == self.user_name:
@@ -237,8 +233,7 @@ class ChatClient:
             if messagebox.askyesno("Confirm Unmute", f"Unmute user '{user}'?"):
                 try:
                     index = self.muted_users.index(user)
-                    self.send_command(f"{self.client_prefix}unmute")
-                    threading.Thread(target=lambda: self.send_followup_data(str(index)), daemon=True).start()
+                    self.send_admin_command("unmute", str(index))
                 except ValueError:
                     messagebox.showerror("Error", "User not found in muted list!")
         elif user not in self.muted_users:
@@ -252,9 +247,8 @@ class ChatClient:
             self.server_ip = data.get('SERVER_IP', 'localhost')
             self.port = data.get('PORT', 8080)
             self.user_name = data.get('USER_NAME', socket.gethostname())
-            self.client_prefix = data.get('PREFIX', '!')
             
-            self.add_to_chat(f"⚙️ Configuration loaded:\n🌐 Server: {self.server_ip}:{self.port}\n👤 Username: {self.user_name}\n🏷️ Prefix: {self.client_prefix}\n", "system")
+            self.add_to_chat(f"⚙️ Configuration loaded:\n🌐 Server: {self.server_ip}:{self.port}\n👤 Username: {self.user_name}\n", "system")
             self.add_to_chat(r"""
             _       __     __                             ______         ______                    _ ________          __ 
             | |     / /__  / /________  ____ ___  ___     /_  __/___     /_  __/__  _________ ___  (_) ____/ /_  ____ _/ /_
@@ -273,8 +267,7 @@ class ChatClient:
         default_config = {
             'SERVER_IP': 'localhost',
             'PORT': 8080,
-            'USER_NAME': socket.gethostname(),
-            'PREFIX': '!'
+            'USER_NAME': socket.gethostname()
         }
         
         try:
@@ -287,7 +280,7 @@ class ChatClient:
     def show_settings(self):
         settings_window = tk.Toplevel(self.root)
         settings_window.title("⚙️ Settings")
-        settings_window.geometry("400x300")
+        settings_window.geometry("400x250")
         settings_window.configure(bg='#2c3e50')
         settings_window.transient(self.root)
         settings_window.grab_set()
@@ -314,25 +307,18 @@ class ChatClient:
         user_entry.insert(0, self.user_name)
         user_entry.grid(row=2, column=1, sticky=tk.EW, padx=(10, 0), pady=5)
         
-        # Prefix
-        ttk.Label(frame, text="🏷️ Prefix:", style='Custom.TLabel').grid(row=3, column=0, sticky=tk.W, pady=5)
-        prefix_entry = tk.Entry(frame, font=('Arial', 10))
-        prefix_entry.insert(0, self.client_prefix)
-        prefix_entry.grid(row=3, column=1, sticky=tk.EW, padx=(10, 0), pady=5)
-        
         frame.columnconfigure(1, weight=1)
         
         # Button frame
         btn_frame = ttk.Frame(frame, style='Custom.TFrame')
-        btn_frame.grid(row=4, column=0, columnspan=2, pady=20)
+        btn_frame.grid(row=3, column=0, columnspan=2, pady=20)
         
         def save_settings():
             try:
                 new_config = {
                     'SERVER_IP': ip_entry.get(),
                     'PORT': int(port_entry.get()),
-                    'USER_NAME': user_entry.get(),
-                    'PREFIX': prefix_entry.get()
+                    'USER_NAME': user_entry.get()
                 }
                 
                 with open('config.json', 'w') as f:
@@ -341,7 +327,6 @@ class ChatClient:
                 self.server_ip = new_config['SERVER_IP']
                 self.port = new_config['PORT']
                 self.user_name = new_config['USER_NAME']
-                self.client_prefix = new_config['PREFIX']
                 
                 self.add_to_chat("✅ Settings saved successfully!", "success")
                 settings_window.destroy()
@@ -361,7 +346,7 @@ class ChatClient:
             
         self.commands_window = tk.Toplevel(self.root)
         self.commands_window.title("📋 Chat Commands")
-        self.commands_window.geometry("600x700")
+        self.commands_window.geometry("600x600")
         self.commands_window.configure(bg='#2c3e50')
         
         # Commands frame
@@ -372,58 +357,50 @@ class ChatClient:
                  style='Custom.TLabel', font=('Arial', 14, 'bold')).pack(pady=(0, 15))
         
         commands_text = scrolledtext.ScrolledText(
-            frame, height=25, width=70,
+            frame, height=20, width=70,
             bg='#34495e', fg='white', font=('Consolas', 10),
             state=tk.DISABLED, wrap=tk.WORD
         )
         commands_text.pack(fill=tk.BOTH, expand=True)
         
-        # Command list
-        commands_info = f"""
-🟢 {self.client_prefix}online
-   └ Check who's currently online
+        # Command list - updated to remove prefix references
+        commands_info = """
+🟢 Check Online Users
+   └ View who's currently connected to the server
 
-👑 {self.client_prefix}adminlist
+👑 View Administrators
    └ Show all server administrators
 
-🚫 {self.client_prefix}ban
-   └ Ban a member (Admin only)
-   └ You'll be prompted for the member index
+🚫 Ban User (Admin Only)
+   └ Permanently ban a user from the server
 
-✅ {self.client_prefix}unban
-   └ Unban a member (Admin only)
-   └ You'll be prompted for the member index
+✅ Unban User (Admin Only)
+   └ Remove a user from the ban list
 
-📋 {self.client_prefix}banlist
-   └ Show all banned members (Admin only)
+📋 View Ban List (Admin Only)
+   └ Show all currently banned users
 
-👢 {self.client_prefix}kick
-   └ Kick a member (Admin only)
-   └ You'll be prompted for the member index
+👢 Kick User (Admin Only)
+   └ Remove a user from the server temporarily
 
-🔇 {self.client_prefix}mute
-   └ Mute a member (Admin only)
-   └ You'll be prompted for the member index
+🔇 Mute User (Admin Only)
+   └ Prevent a user from sending messages
 
-🔊 {self.client_prefix}unmute
-   └ Unmute a member (Admin only)
-   └ You'll be prompted for the member index
+🔊 Unmute User (Admin Only)
+   └ Allow a muted user to send messages again
 
-📢 {self.client_prefix}announce
-   └ Send server announcement (Admin only)
+📢 Send Announcement (Admin Only)
+   └ Broadcast a message to all users
 
-🌐 {self.client_prefix}serverinfo
-   └ Display server information
+🌐 Server Information
+   └ Display server details and statistics
 
-🚪 {self.client_prefix}exit
-   └ Exit the chat
-
-❓ {self.client_prefix}help
-   └ Show this help information
+🚪 Disconnect
+   └ Safely disconnect from the server
 
 ═══════════════════════════════════════
 
-💡 Quick Command Buttons:
+💡 All commands are available through buttons below:
 """
         
         commands_text.config(state=tk.NORMAL)
@@ -439,11 +416,11 @@ class ChatClient:
         row1.pack(fill=tk.X, pady=2)
         
         ttk.Button(row1, text="🟢 Online", 
-                  command=lambda: self.send_command(f"{self.client_prefix}online")).pack(side=tk.LEFT, padx=2)
+                  command=self.request_online_users).pack(side=tk.LEFT, padx=2)
         ttk.Button(row1, text="👑 Admins", 
-                  command=lambda: self.send_command(f"{self.client_prefix}adminlist")).pack(side=tk.LEFT, padx=2)
+                  command=self.request_admin_list).pack(side=tk.LEFT, padx=2)
         ttk.Button(row1, text="🌐 Server Info", 
-                  command=lambda: self.send_command(f"{self.client_prefix}serverinfo")).pack(side=tk.LEFT, padx=2)
+                  command=self.request_server_info).pack(side=tk.LEFT, padx=2)
         
         self.admin_button_refs = []  # Store button references to enable/disable later
 
@@ -483,7 +460,7 @@ class ChatClient:
         row4 = ttk.Frame(buttons_frame, style='Custom.TFrame')
         row4.pack(fill=tk.X, pady=2)
 
-        btn_banlist = ttk.Button(row4, text="📋 Ban List", command=lambda: self.send_command(f"{self.client_prefix}banlist"))
+        btn_banlist = ttk.Button(row4, text="📋 Ban List", command=self.request_ban_list)
         btn_banlist.pack(side=tk.LEFT, padx=2)
         self.admin_button_refs.append(btn_banlist)
 
@@ -497,8 +474,7 @@ class ChatClient:
             return
         message = simpledialog.askstring("📢 Announcement", "Enter announcement message:")
         if message:
-            self.send_command(f"{self.client_prefix}announce")
-            threading.Thread(target=lambda: self.send_followup_data(message), daemon=True).start()
+            self.send_admin_command("announce", message)
 
     def admin_action(self, action):
         if not self.connected:
@@ -510,7 +486,6 @@ class ChatClient:
             return
 
         self.prompt_user_selection_popup(action)
-
 
     def prompt_user_selection_popup(self, action):
         """Popup window for admin to select a user for actions like ban/kick/mute"""
@@ -538,15 +513,28 @@ class ChatClient:
             selected_name = listbox.get(selection[0]).strip("👑 ").strip()
             try:
                 index = self.online_users.index(selected_name)
-                self.send_command(f"{self.client_prefix}{action}")
-                threading.Thread(target=lambda: self.send_followup_data(str(index)), daemon=True).start()
+                self.send_admin_command(action, str(index))
                 popup.destroy()
             except ValueError:
                 messagebox.showerror("Error", "User not found in online list.")
 
         ttk.Button(popup, text="✅ OK", command=send_selected, style='Success.TButton').pack(pady=(5, 10))
 
-
+    def send_admin_command(self, command, data):
+        """Send admin command to server with the required protocol"""
+        if not self.connected:
+            return
+        
+        try:
+            # Send the command first
+            command_msg = f"!{command}"  # Server still expects the prefix format
+            self.send_raw_message(command_msg)
+            
+            # Send followup data after a small delay
+            threading.Thread(target=lambda: self.send_followup_data(data), daemon=True).start()
+            
+        except Exception as e:
+            self.add_to_chat(f"❌ Error sending admin command: {e}", "error")
 
     def send_followup_data(self, data):
         time.sleep(0.1)  # Small delay to ensure command is processed first
@@ -557,14 +545,25 @@ class ChatClient:
         except Exception as e:
             self.root.after(0, lambda e=e: self.add_to_chat(f"❌ Error sending followup data: {e}", "error"))
     
-    def send_command(self, command):
-        if not self.connected:
-            messagebox.showwarning("Warning", "Not connected to server!")
-            return
-        
-        self.message_entry.delete(0, tk.END)
-        self.message_entry.insert(0, command)
-        self.send_message()
+    def request_online_users(self):
+        """Request list of online users"""
+        if self.connected:
+            self.send_raw_message("!online")
+    
+    def request_admin_list(self):
+        """Request list of administrators"""
+        if self.connected:
+            self.send_raw_message("!adminlist")
+    
+    def request_server_info(self):
+        """Request server information"""
+        if self.connected:
+            self.send_raw_message("!serverinfo")
+    
+    def request_ban_list(self):
+        """Request list of banned users"""
+        if self.connected:
+            self.send_raw_message("!banlist")
     
     def connect_to_server(self):
         if self.connected:
@@ -575,11 +574,14 @@ class ChatClient:
             self.client.settimeout(10.0)  # 10 second timeout for connection
             self.client.connect((self.server_ip, self.port))
             
-            # Send username and prefix
+            # Send username (no prefix needed anymore)
             self.client.send(f"{len(self.user_name):04}".encode('utf-8'))
             self.client.send(self.user_name.encode('utf-8'))
-            self.client.send(f"{len(self.client_prefix):04}".encode('utf-8'))
-            self.client.send(self.client_prefix.encode('utf-8'))
+            
+            # Send default prefix for server compatibility
+            default_prefix = "!"
+            self.client.send(f"{len(default_prefix):04}".encode('utf-8'))
+            self.client.send(default_prefix.encode('utf-8'))
             
             # Check ban status
             ban_verify_len = int(self.client.recv(4).decode('utf-8'))
@@ -665,6 +667,93 @@ class ChatClient:
         self.client.close()
         return False
     
+    def create_password_dialog(self, title, prompt):
+        """Create a custom password dialog to avoid tkinter widget naming conflicts"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title(title)
+        dialog.geometry("300x150")
+        dialog.configure(bg='#2c3e50')
+        dialog.transient(self.root)
+        dialog.grab_set()
+        dialog.resizable(False, False)
+        
+        # Center the dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (dialog.winfo_width() // 2)
+        y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
+        dialog.geometry(f"+{x}+{y}")
+        
+        result = {"password": None}
+        
+        # Create dialog content
+        frame = ttk.Frame(dialog, style='Custom.TFrame')
+        frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        ttk.Label(frame, text=prompt, style='Custom.TLabel').pack(pady=(0, 10))
+        
+        password_var = tk.StringVar()
+        entry = tk.Entry(frame, textvariable=password_var, show='*', font=('Arial', 11))
+        entry.pack(fill=tk.X, pady=(0, 15))
+        entry.focus_set()
+        
+        button_frame = ttk.Frame(frame, style='Custom.TFrame')
+        button_frame.pack()
+        
+        def on_ok():
+            result["password"] = password_var.get()
+            dialog.destroy()
+        
+        def on_cancel():
+            result["password"] = None
+            dialog.destroy()
+        
+        ttk.Button(button_frame, text="OK", command=on_ok, style='Custom.TButton').pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Cancel", command=on_cancel, style='Custom.TButton').pack(side=tk.LEFT)
+        
+        # Bind Enter key to OK
+        entry.bind('<Return>', lambda e: on_ok())
+        dialog.bind('<Escape>', lambda e: on_cancel())
+        
+        # Wait for dialog to close
+        dialog.wait_window()
+        
+        return result["password"]
+
+    def authenticate_server(self):
+        attempts = 0
+        while attempts < 3:
+            # Replace simpledialog.askstring with custom dialog
+            password = self.create_password_dialog("Server Password", "Enter server password:")
+            if not password:
+                self.client.close()
+                return False
+                
+            if len(password) < 9:
+                messagebox.showwarning("Invalid Password", 
+                                    "Password must be at least 9 characters long!")
+                continue
+            
+            try:
+                self.client.send(f"{len(password):04}".encode('utf-8'))
+                self.client.send(password.encode('utf-8'))
+                
+                verify_len = int(self.client.recv(4).decode('utf-8'))
+                verify = self.client.recv(verify_len).decode('utf-8')
+                
+                if verify == 'access denied':
+                    attempts += 1
+                    messagebox.showerror("Access Denied", f"Wrong password! {3-attempts} attempts remaining")
+                else:
+                    return True
+            except Exception as e:
+                messagebox.showerror("Authentication Error", f"Error during authentication: {e}")
+                self.client.close()
+                return False
+        
+        messagebox.showerror("Authentication Failed", "Too many failed attempts!")
+        self.client.close()
+        return False
+
     def check_admin_auth(self):
         try:
             admin_verify_len = int(self.client.recv(4).decode('utf-8'))
@@ -680,15 +769,14 @@ class ChatClient:
                 if is_admin:
                     attempts = 0
                     while attempts < 3:
-                        admin_password = simpledialog.askstring("Admin Password", 
-                                                               "Enter admin password:", show='*')
+                        # Replace simpledialog.askstring with custom dialog
+                        admin_password = self.create_password_dialog("Admin Password", "Enter admin password:")
                         if not admin_password:
                             break
                             
-                        # Fixed: Changed from 8 to 9 to match server requirement
                         if len(admin_password) < 9:
                             messagebox.showwarning("Invalid Password", 
-                                                 "Password must be at least 9 characters long!")
+                                                "Password must be at least 9 characters long!")
                             continue
                         
                         try:
@@ -704,7 +792,6 @@ class ChatClient:
                             else:
                                 self.is_admin = True
                                 self.add_to_chat("👑 Admin privileges granted!", "admin")
-                                # Update admin buttons in commands window if it exists
                                 if hasattr(self, 'admin_button_refs'):
                                     for btn in self.admin_button_refs:
                                         btn.config(state=tk.NORMAL)
@@ -718,7 +805,6 @@ class ChatClient:
                         self.client.close()
                         return False
             elif admin_verify == "Welcome to the Server!":
-                # Non-admin user, continue normally
                 pass
                 
         except Exception as e:
@@ -732,10 +818,10 @@ class ChatClient:
         if self.connected:
             try:
                 # Request online users
-                self.send_raw_message(f"{self.client_prefix}online")
+                self.request_online_users()
                 time.sleep(0.2)
                 # Request admin list
-                self.send_raw_message(f"{self.client_prefix}adminlist")
+                self.request_admin_list()
             except Exception as e:
                 self.add_to_chat(f"❌ Error requesting user lists: {e}", "error")
     
@@ -743,7 +829,7 @@ class ChatClient:
         if self.connected:
             try:
                 self.receiving = False
-                self.send_raw_message(f"{self.client_prefix}exit")
+                self.send_raw_message("!exit")
                 time.sleep(0.1)  # Give time for exit message to send
                 self.client.close()
             except:
@@ -777,18 +863,19 @@ class ChatClient:
         if not message:
             return
         
+        # Block command-like messages from being sent as regular chat
+        if message.startswith('!'):
+            messagebox.showwarning("Invalid Message", "Commands must be sent using the buttons in the Commands window!")
+            self.message_entry.delete(0, tk.END)
+            return
+        
         try:
             self.send_raw_message(message)
             
-            # Add own message to chat with special formatting (only for non-commands)
-            if not message.startswith(self.client_prefix):
-                self.add_to_chat(f"[{self.user_name}] {message}", "own")
+            # Add own message to chat
+            self.add_to_chat(f"[{self.user_name}] {message}", "own")
             
             self.message_entry.delete(0, tk.END)
-            
-            # Handle exit command
-            if message.startswith(f"{self.client_prefix}exit"):
-                self.disconnect_from_server()
                 
         except Exception as e:
             self.add_to_chat(f"❌ Error sending message: {e}", "error")

@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────
-# TermiChat Server — Version 1.0
+# TermiChat Server — Version 1.0 (Fixed)
 # Author: VibhasDutta
 # Date Updated: 2025-06-01
 # ─────────────────────────────────────────────
@@ -11,9 +11,7 @@ Clients = {}
 UserNames = {}
 Bans = set()
 Admins = set()
-
 Muted = set()  # For muted users
-MessageQueue = []  # For scheduled messages: list of tuples (send_time, target_conn, message)
 
 def send_private_message(sender_conn, recipient_username, message, timestamp):
     for conn, full_username in UserNames.items():
@@ -24,14 +22,30 @@ def send_private_message(sender_conn, recipient_username, message, timestamp):
     sender_conn.send("⚠️ User not found.".encode('utf-8'))
 
 def broadcast(message):
-    for client in Clients:
+    # Create a copy of the clients list to avoid iteration issues
+    clients_copy = list(Clients.keys())
+    clients_to_remove = []
+    
+    for client in clients_copy:
         try:
             client.send(message.encode('utf-8'))
         except:
-            Clients.pop(client, None)
-            UserNames.pop(client, None)
-            if client in Admins:
-                Admins.remove(client)
+            clients_to_remove.append(client)
+    
+    # Remove disconnected clients after iteration
+    for client in clients_to_remove:
+        cleanup_client(client)
+
+def cleanup_client(client):
+    """Safely remove a client from all collections"""
+    if client in Clients:
+        Clients.pop(client, None)
+    if client in UserNames:
+        UserNames.pop(client, None)
+    if client in Admins:
+        Admins.remove(client)
+    if client in Muted:
+        Muted.remove(client)
 
 def recv_all(conn, n):
     """Ensure n bytes are received."""
@@ -95,11 +109,13 @@ def handle_admin_command(command, connection, timestamp):
 
             if command == "ban":
                 Bans.add(target_user)
-                target_conn.close()
                 broadcast(f"🚫 [{timestamp.strftime('%I:%M %p')}] {target_user} has been banned.")
+                cleanup_client(target_conn)  # Clean up first
+                target_conn.close()  # Then close connection
             elif command == "kick":
-                target_conn.close()
                 broadcast(f"👢 [{timestamp.strftime('%I:%M %p')}] {target_user} has been kicked.")
+                cleanup_client(target_conn)  # Clean up first
+                target_conn.close()  # Then close connection
             elif command == "mute":
                 Muted.add(target_conn)
                 broadcast(f"🔇 [{timestamp.strftime('%I:%M %p')}] {target_user} has been muted.")
@@ -132,7 +148,6 @@ def handle_admin_command(command, connection, timestamp):
         connection.send(f"⚠️ Unexpected error: {str(e)}".encode('utf-8'))
     finally:
         connection.settimeout(None)
-
 
 def handle_client(conn, addr, ADDR, server_pass, admin_pass):
     try:
@@ -204,7 +219,10 @@ def handle_client(conn, addr, ADDR, server_pass, admin_pass):
 
         timestamp = datetime.datetime.now()
         print(f"🔗 [{timestamp.strftime('%I:%M %p')}][{full_username}] connected.")
-        broadcast(f"🔗 [{timestamp.strftime('%I:%M %p')}][{full_username}] joined the server.")
+        if conn in Admins:
+            broadcast(f"👑 [{timestamp.strftime('%I:%M %p')}][ADMIN: {full_username}] has joined the server.")
+        else:
+            broadcast(f"🔗 [{timestamp.strftime('%I:%M %p')}][{full_username}] joined the server.")
 
         while True:
             msg_len = conn.recv(64).decode('utf-8')
@@ -218,6 +236,12 @@ def handle_client(conn, addr, ADDR, server_pass, admin_pass):
                 break
 
             timestamp = datetime.datetime.now()
+            
+            # Check if user is muted before processing regular messages
+            if conn in Muted and not msg.startswith(prefix):
+                conn.send("🔇 You are muted and cannot send messages.".encode('utf-8'))
+                continue
+                
             if msg.startswith(prefix):
                 command = msg[len(prefix):].strip().split()[0]
                 if command in ["ban", "unban", "banlist", "kick", "mute", "unmute", "announce"]:
@@ -244,25 +268,26 @@ def handle_client(conn, addr, ADDR, server_pass, admin_pass):
                         conn.send(f"🔹 {user}".encode('utf-8'))
             else:
                 print(f"💠 [{timestamp.strftime('%I:%M %p')}][{full_username}] | {msg}")
-                for client in Clients:
+                
+                # Create a copy of clients to avoid iteration issues
+                clients_copy = list(Clients.keys())
+                clients_to_remove = []
+                
+                for client in clients_copy:
                     if client != conn:  # Don't send message back to the sender
                         try:
                             client.send(f"💠 [{timestamp.strftime('%I:%M %p')}][{full_username}] | {msg}".encode('utf-8'))
                         except:
-                            Clients.pop(client, None)
-                            UserNames.pop(client, None)
-                            if client in Admins:
-                                Admins.remove(client)
+                            clients_to_remove.append(client)
+                
+                # Remove disconnected clients after iteration
+                for client in clients_to_remove:
+                    cleanup_client(client)
 
     except Exception as e:
         print(f"❌ Disconnected: {addr}, Error: {e}")
     finally:
-        if conn in Admins:
-            Admins.remove(conn)
-        if conn in Clients:
-            Clients.pop(conn)
-        if conn in UserNames:
-            UserNames.pop(conn)
+        cleanup_client(conn)
         conn.close()
 
 def start(server, ADDR, IP, PORT):
@@ -288,3 +313,11 @@ def start(server, ADDR, IP, PORT):
         conn, addr = server.accept()
         thread = threading.Thread(target=handle_client, args=(conn, addr, ADDR, server_pass, admin_pass))
         thread.start()
+
+if __name__ == "__main__":
+    IP_Address = '127.0.0.1'
+    PORT = 1234
+    ADDR = (IP_Address, PORT)
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(ADDR)
+    start(server, ADDR, IP_Address, PORT)

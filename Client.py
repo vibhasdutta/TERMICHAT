@@ -199,18 +199,22 @@ def main():
             cmd = message.strip().lower()
 
             if cmd.startswith(f"{ClientPrefix}help"):
-                print(f"""
-🟢 {ClientPrefix}online: Check online members
-👑 {ClientPrefix}adminlist: Show all Admins
-🚫 {ClientPrefix}ban: Ban Member (Admin only)
-✅ {ClientPrefix}unban: Unban Member (Admin only)
-📋 {ClientPrefix}banlist: Show Banned Members (Admin only)
-🔇 {ClientPrefix}mute: Mute Member (Admin only)
-🔊 {ClientPrefix}unmute: Unmute Member (Admin only)
-📢 {ClientPrefix}announce: Server-wide message (Admin only)
-👢 {ClientPrefix}kick: Kick Member (Admin only)
-🌐 {ClientPrefix}serverinfo: Server info
-🚪 {ClientPrefix}exit: Exit chat
+                print(rf"""
+╔═══════════════════════════════════════════════════════╗
+║                     📚 COMMAND HELP                   ║
+╠═══════════════════════════════════════════════════════╣
+ 🟢 {ClientPrefix}online       │ Check online members            
+ 👑 {ClientPrefix}adminlist    │ Show all Admins                 
+ 🚫 {ClientPrefix}ban          │ Ban Member (Admin only)         
+ ✅ {ClientPrefix}unban        │ Unban Member (Admin only)       
+ 📋 {ClientPrefix}banlist      │ Show Banned Members (Admin only)
+ 🔇 {ClientPrefix}mute         │ Mute Member (Admin only)        
+ 🔊 {ClientPrefix}unmute       │ Unmute Member (Admin only)      
+ 📢 {ClientPrefix}announce     │ Server-wide message (Admin only)
+ 👢 {ClientPrefix}kick         │ Kick Member (Admin only)        
+ 🌐 {ClientPrefix}serverinfo   │ Server information              
+ 💾 {ClientPrefix}savehistory  │ Save chat history               
+ 🚪 {ClientPrefix}exit         │ Exit chat                       
 """)
 
             elif cmd.startswith(f"{ClientPrefix}exit"):
